@@ -13,7 +13,6 @@ import org.eclipse.milo.opcua.stack.server.EndpointConfiguration;
 
 import java.util.Set;
 
-import static org.eclipse.milo.opcua.sdk.server.api.config.OpcUaServerConfig.USER_TOKEN_POLICY_ANONYMOUS;
 
 public class Main {
 
@@ -44,13 +43,11 @@ public class Main {
                 .setTransportProfile(TransportProfile.TCP_UASC_UABINARY)
                 .setSecurityPolicy(SecurityPolicy.None)
                 .setSecurityMode(MessageSecurityMode.None)
-                .setUserTokenPolicies(Set.of(USER_TOKEN_POLICY_ANONYMOUS))
                 .build();
 
         OpcUaServerConfig config = OpcUaServerConfig.builder()
                 .setApplicationUri(APP_URI)
                 .setApplicationName(LocalizedText.english("LS eXP2 OPC UA Test Server"))
-                .setBindAddresses(Set.of(BIND_IP))
                 .setBindPort(ENDPOINT_PORT)
                 .setEndpoints(Set.of(endpoint))
                 .setIdentityValidator(new AnonymousIdentityValidator())
