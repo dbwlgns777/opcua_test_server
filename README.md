@@ -7,7 +7,7 @@
 
 - Java: Temurin OpenJDK 17
 - Build: Gradle (`build.gradle.kts`)
-- OPC UA SDK: Eclipse Milo (`sdk-server`, `stack-server`)
+- OPC UA SDK: Eclipse Milo 0.6.14 (`sdk-server`, `stack-server`)
 
 ## 2) 서버 실행
 
@@ -17,7 +17,7 @@ gradle run
 
 기본 엔드포인트:
 
-- `opc.tcp://<서버IP>:12686/lsexp2-test`
+- `opc.tcp://192.168.89.2:8624/lsexp2-test`
 
 ## 3) OPC UA 주소 공간 (테스트 태그)
 
@@ -34,7 +34,7 @@ gradle run
 ## 4) HMI(LS eXP2-1000D) Client 설정 예시
 
 1. 통신 드라이버/프로토콜: OPC UA Client
-2. 서버 URL: `opc.tcp://<서버IP>:12686/lsexp2-test`
+2. 서버 URL: `opc.tcp://192.168.89.2:8624/lsexp2-test`
 3. Security Policy: `None`
 4. Message Security Mode: `None`
 5. User Authentication: `Anonymous`
