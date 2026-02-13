@@ -24,8 +24,6 @@ import org.eclipse.milo.opcua.stack.core.types.enumerated.MessageSecurityMode;
 import org.eclipse.milo.opcua.stack.core.types.structured.BuildInfo;
 import org.eclipse.milo.opcua.stack.server.EndpointConfiguration;
 
-import java.time.LocalDateTime;
-import java.time.ZoneOffset;
 import java.util.Set;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -173,9 +171,7 @@ public class Main {
                     DateTime.now()
             ));
 
-            serverTimeNode.setValue(new DataValue(new Variant(DateTime.of(
-                    LocalDateTime.now().toInstant(ZoneOffset.UTC)
-            ))));
+            serverTimeNode.setValue(new DataValue(new Variant(DateTime.now())));
         }, 1, 1, TimeUnit.SECONDS);
 
         Runtime.getRuntime().addShutdownHook(new Thread(scheduler::shutdownNow));
