@@ -1,13 +1,14 @@
 package org.example;
 
 import org.eclipse.milo.opcua.sdk.server.OpcUaServer;
+import org.eclipse.milo.opcua.sdk.server.api.ManagedNamespace;
 import org.eclipse.milo.opcua.sdk.server.api.config.OpcUaServerConfig;
-import org.eclipse.milo.opcua.sdk.server.api.config.UserTokenPolicy;
 import org.eclipse.milo.opcua.sdk.server.identity.AnonymousIdentityValidator;
-import org.eclipse.milo.opcua.sdk.server.namespaces.ManagedNamespace;
 import org.eclipse.milo.opcua.sdk.server.nodes.UaFolderNode;
 import org.eclipse.milo.opcua.sdk.server.nodes.UaVariableNode;
+import org.eclipse.milo.opcua.stack.core.Identifiers;
 import org.eclipse.milo.opcua.stack.core.security.SecurityPolicy;
+import org.eclipse.milo.opcua.stack.core.transport.TransportProfile;
 import org.eclipse.milo.opcua.stack.core.types.builtin.DataValue;
 import org.eclipse.milo.opcua.stack.core.types.builtin.DateTime;
 import org.eclipse.milo.opcua.stack.core.types.builtin.LocalizedText;
@@ -16,13 +17,17 @@ import org.eclipse.milo.opcua.stack.core.types.builtin.Variant;
 import org.eclipse.milo.opcua.stack.core.types.enumerated.MessageSecurityMode;
 import org.eclipse.milo.opcua.stack.core.types.enumerated.NodeClass;
 import org.eclipse.milo.opcua.stack.core.types.structured.BuildInfo;
+import org.eclipse.milo.opcua.stack.server.EndpointConfiguration;
 
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+
+import static org.eclipse.milo.opcua.sdk.server.api.config.OpcUaServerConfig.USER_TOKEN_POLICY_ANONYMOUS;
 
 public class Main {
 
@@ -46,30 +51,31 @@ public class Main {
     }
 
     private static OpcUaServer createServer() {
+        EndpointConfiguration endpoint = EndpointConfiguration.newBuilder()
+                .setBindAddress(BIND_IP)
+                .setHostname(BIND_IP)
+                .setPath(ENDPOINT_PATH)
+                .setTransportProfile(TransportProfile.TCP_UASC_UABINARY)
+                .setSecurityPolicy(SecurityPolicy.None)
+                .setSecurityMode(MessageSecurityMode.None)
+                .setUserTokenPolicies(List.of(USER_TOKEN_POLICY_ANONYMOUS))
+                .build();
+
         OpcUaServerConfig config = OpcUaServerConfig.builder()
                 .setApplicationUri(APP_URI)
                 .setApplicationName(LocalizedText.english("LS eXP2 OPC UA Test Server"))
-                .setBindAddresses(Set.of(BIND_IP))
+                .setBindAddresses(List.of(BIND_IP))
                 .setBindPort(ENDPOINT_PORT)
-                .setEndpoints(Set.of(
-                        new OpcUaServerConfig.OpcUaEndpointConfigBuilder()
-                                .setPath(ENDPOINT_PATH)
-                                .setHostname(BIND_IP)
-                                .setSecurityPolicy(SecurityPolicy.None)
-                                .setSecurityMode(MessageSecurityMode.None)
-                                .setTransportProfile(org.eclipse.milo.opcua.stack.core.Stack.UA_TCP_BINARY_TRANSPORT_URI)
-                                .setUserTokenPolicies(Set.of(UserTokenPolicy.ANONYMOUS))
-                                .build()
-                ))
+                .setEndpoints(Set.of(endpoint))
                 .setBuildInfo(new BuildInfo(
                         APP_URI,
                         "openai",
                         "LS eXP2 OPC UA Test Server",
                         OpcUaServer.SDK_VERSION,
-                        "1.2.0",
+                        "1.2.1",
                         DateTime.now()
                 ))
-                .setIdentityValidator(new AnonymousIdentityValidator(true))
+                .setIdentityValidator(new AnonymousIdentityValidator())
                 .build();
 
         OpcUaServer server = new OpcUaServer(config);
@@ -104,11 +110,11 @@ public class Main {
             getNodeManager().addNode(rootFolder);
 
             getServer().getUaNamespace().addReference(
-                    org.eclipse.milo.opcua.stack.core.Identifiers.ObjectsFolder,
+                    Identifiers.ObjectsFolder,
                     NodeClass.Object,
                     rootFolder.getNodeId().expanded(),
                     NodeClass.Object,
-                    org.eclipse.milo.opcua.stack.core.Identifiers.Organizes,
+                    Identifiers.Organizes,
                     true
             );
 
@@ -116,8 +122,8 @@ public class Main {
                     .setNodeId(newNodeId("LS_EXP2/CurrentTemperature"))
                     .setBrowseName(newQualifiedName("CurrentTemperature"))
                     .setDisplayName(LocalizedText.english("CurrentTemperature"))
-                    .setDataType(org.eclipse.milo.opcua.stack.core.Identifiers.Double)
-                    .setTypeDefinition(org.eclipse.milo.opcua.stack.core.Identifiers.BaseDataVariableType)
+                    .setDataType(Identifiers.Double)
+                    .setTypeDefinition(Identifiers.BaseDataVariableType)
                     .build();
             currentTemperatureNode.setValue(new DataValue(new Variant(23.5d)));
             getNodeManager().addNode(currentTemperatureNode);
@@ -127,8 +133,8 @@ public class Main {
                     .setNodeId(newNodeId("LS_EXP2/Heartbeat"))
                     .setBrowseName(newQualifiedName("Heartbeat"))
                     .setDisplayName(LocalizedText.english("Heartbeat"))
-                    .setDataType(org.eclipse.milo.opcua.stack.core.Identifiers.Boolean)
-                    .setTypeDefinition(org.eclipse.milo.opcua.stack.core.Identifiers.BaseDataVariableType)
+                    .setDataType(Identifiers.Boolean)
+                    .setTypeDefinition(Identifiers.BaseDataVariableType)
                     .build();
             heartbeatNode.setValue(new DataValue(new Variant(false)));
             getNodeManager().addNode(heartbeatNode);
@@ -138,8 +144,8 @@ public class Main {
                     .setNodeId(newNodeId("LS_EXP2/ServerTime"))
                     .setBrowseName(newQualifiedName("ServerTime"))
                     .setDisplayName(LocalizedText.english("ServerTime"))
-                    .setDataType(org.eclipse.milo.opcua.stack.core.Identifiers.DateTime)
-                    .setTypeDefinition(org.eclipse.milo.opcua.stack.core.Identifiers.BaseDataVariableType)
+                    .setDataType(Identifiers.DateTime)
+                    .setTypeDefinition(Identifiers.BaseDataVariableType)
                     .build();
             serverTimeNode.setValue(new DataValue(new Variant(DateTime.now())));
             getNodeManager().addNode(serverTimeNode);
