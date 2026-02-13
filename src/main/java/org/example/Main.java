@@ -1,17 +1,69 @@
 package org.example;
 
-//TIP 코드를 <b>실행</b>하려면 <shortcut actionId="Run"/>을(를) 누르거나
-// 에디터 여백에 있는 <icon src="AllIcons.Actions.Execute"/> 아이콘을 클릭하세요.
-public class Main {
-    public static void main(String[] args) {
-        //TIP 캐럿을 강조 표시된 텍스트에 놓고 <shortcut actionId="ShowIntentionActions"/>을(를) 누르면
-        // IntelliJ IDEA이(가) 수정을 제안하는 것을 확인할 수 있습니다.
-        System.out.printf("Hello and welcome!");
+import org.eclipse.milo.opcua.sdk.server.OpcUaServer;
+import org.eclipse.milo.opcua.sdk.server.api.config.OpcUaServerConfig;
+import org.eclipse.milo.opcua.sdk.server.identity.AnonymousIdentityValidator;
+import org.eclipse.milo.opcua.stack.core.security.SecurityPolicy;
+import org.eclipse.milo.opcua.stack.core.transport.TransportProfile;
+import org.eclipse.milo.opcua.stack.core.types.builtin.DateTime;
+import org.eclipse.milo.opcua.stack.core.types.builtin.LocalizedText;
+import org.eclipse.milo.opcua.stack.core.types.enumerated.MessageSecurityMode;
+import org.eclipse.milo.opcua.stack.core.types.structured.BuildInfo;
+import org.eclipse.milo.opcua.stack.server.EndpointConfiguration;
 
-        for (int i = 1; i <= 5; i++) {
-            //TIP <shortcut actionId="Debug"/>을(를) 눌러 코드 디버그를 시작하세요. 1개의 <icon src="AllIcons.Debugger.Db_set_breakpoint"/> 중단점을 설정해 드렸습니다
-            // 언제든 <shortcut actionId="ToggleLineBreakpoint"/>을(를) 눌러 중단점을 더 추가할 수 있습니다.
-            System.out.println("i = " + i);
-        }
+import java.util.Set;
+
+import static org.eclipse.milo.opcua.sdk.server.api.config.OpcUaServerConfig.USER_TOKEN_POLICY_ANONYMOUS;
+
+public class Main {
+
+    private static final String APP_URI = "urn:lsexp2:test:opcua:server";
+    private static final String BIND_IP = "192.168.89.2";
+    private static final String ENDPOINT_PATH = "/lsexp2-test";
+    private static final int ENDPOINT_PORT = 8624;
+
+    public static void main(String[] args) throws Exception {
+        OpcUaServer server = createServer();
+        Runtime.getRuntime().addShutdownHook(new Thread(server::shutdown));
+
+        server.startup().get();
+
+        System.out.println("OPC UA Test Server started.");
+        System.out.println("Endpoint: opc.tcp://" + BIND_IP + ":" + ENDPOINT_PORT + ENDPOINT_PATH);
+        System.out.println("SecurityPolicy: None / MessageSecurityMode: None / Auth: Anonymous");
+        System.out.println("Ctrl+C로 서버를 종료할 수 있습니다.");
+
+        Thread.currentThread().join();
+    }
+
+    private static OpcUaServer createServer() {
+        EndpointConfiguration endpoint = EndpointConfiguration.newBuilder()
+                .setBindAddress(BIND_IP)
+                .setHostname(BIND_IP)
+                .setPath(ENDPOINT_PATH)
+                .setTransportProfile(TransportProfile.TCP_UASC_UABINARY)
+                .setSecurityPolicy(SecurityPolicy.None)
+                .setSecurityMode(MessageSecurityMode.None)
+                .setUserTokenPolicies(Set.of(USER_TOKEN_POLICY_ANONYMOUS))
+                .build();
+
+        OpcUaServerConfig config = OpcUaServerConfig.builder()
+                .setApplicationUri(APP_URI)
+                .setApplicationName(LocalizedText.english("LS eXP2 OPC UA Test Server"))
+                .setBindAddresses(Set.of(BIND_IP))
+                .setBindPort(ENDPOINT_PORT)
+                .setEndpoints(Set.of(endpoint))
+                .setIdentityValidator(new AnonymousIdentityValidator())
+                .setBuildInfo(new BuildInfo(
+                        APP_URI,
+                        "openai",
+                        "LS eXP2 OPC UA Test Server",
+                        OpcUaServer.SDK_VERSION,
+                        "2.0.0",
+                        DateTime.now()
+                ))
+                .build();
+
+        return new OpcUaServer(config);
     }
 }
