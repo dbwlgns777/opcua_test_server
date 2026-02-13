@@ -2,8 +2,9 @@ package org.example;
 
 import org.eclipse.milo.opcua.sdk.server.OpcUaServer;
 import org.eclipse.milo.opcua.sdk.server.api.config.OpcUaServerConfig;
+import org.eclipse.milo.opcua.sdk.server.api.config.UserTokenPolicy;
 import org.eclipse.milo.opcua.sdk.server.identity.AnonymousIdentityValidator;
-import org.eclipse.milo.opcua.sdk.server.api.ManagedNamespace;
+import org.eclipse.milo.opcua.sdk.server.namespaces.ManagedNamespace;
 import org.eclipse.milo.opcua.sdk.server.nodes.UaFolderNode;
 import org.eclipse.milo.opcua.sdk.server.nodes.UaVariableNode;
 import org.eclipse.milo.opcua.stack.core.security.SecurityPolicy;
@@ -15,10 +16,7 @@ import org.eclipse.milo.opcua.stack.core.types.builtin.Variant;
 import org.eclipse.milo.opcua.stack.core.types.enumerated.MessageSecurityMode;
 import org.eclipse.milo.opcua.stack.core.types.enumerated.NodeClass;
 import org.eclipse.milo.opcua.stack.core.types.structured.BuildInfo;
-import org.eclipse.milo.opcua.stack.core.types.structured.UserTokenPolicy;
-import org.eclipse.milo.opcua.stack.server.EndpointConfiguration;
 
-import java.net.InetAddress;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.Set;
@@ -42,35 +40,35 @@ public class Main {
         System.out.println("OPC UA Test Server started.");
         System.out.println("Endpoint: opc.tcp://" + BIND_IP + ":" + ENDPOINT_PORT + ENDPOINT_PATH);
         System.out.println("Namespace URI: " + LsExp2Namespace.NAMESPACE_URI);
-        System.out.println("Host IP(Detected): " + InetAddress.getLocalHost().getHostAddress());
         System.out.println("Ctrl+C로 서버를 종료할 수 있습니다.");
 
         Thread.currentThread().join();
     }
 
-    private static OpcUaServer createServer() throws Exception {
-        EndpointConfiguration endpoint = EndpointConfiguration.newBuilder()
-                .setBindAddress(BIND_IP)
-                .setHostname(BIND_IP)
-                .setPath(ENDPOINT_PATH)
-                .setBindPort(ENDPOINT_PORT)
-                .setSecurityPolicyUri(SecurityPolicy.None.getUri())
-                .setSecurityMode(MessageSecurityMode.None)
-                .addTokenPolicies(UserTokenPolicy.ANONYMOUS)
-                .build();
-
+    private static OpcUaServer createServer() {
         OpcUaServerConfig config = OpcUaServerConfig.builder()
                 .setApplicationUri(APP_URI)
                 .setApplicationName(LocalizedText.english("LS eXP2 OPC UA Test Server"))
+                .setBindAddresses(Set.of(BIND_IP))
+                .setBindPort(ENDPOINT_PORT)
+                .setEndpoints(Set.of(
+                        new OpcUaServerConfig.OpcUaEndpointConfigBuilder()
+                                .setPath(ENDPOINT_PATH)
+                                .setHostname(BIND_IP)
+                                .setSecurityPolicy(SecurityPolicy.None)
+                                .setSecurityMode(MessageSecurityMode.None)
+                                .setTransportProfile(org.eclipse.milo.opcua.stack.core.Stack.UA_TCP_BINARY_TRANSPORT_URI)
+                                .setUserTokenPolicies(Set.of(UserTokenPolicy.ANONYMOUS))
+                                .build()
+                ))
                 .setBuildInfo(new BuildInfo(
                         APP_URI,
                         "openai",
                         "LS eXP2 OPC UA Test Server",
                         OpcUaServer.SDK_VERSION,
-                        "1.1.0",
+                        "1.2.0",
                         DateTime.now()
                 ))
-                .setEndpoints(Set.of(endpoint))
                 .setIdentityValidator(new AnonymousIdentityValidator(true))
                 .build();
 
