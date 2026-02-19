@@ -27,14 +27,10 @@ Milo API 버전 충돌 가능성을 줄이기 위해 서버는 단순하게 구�
 
 ## 3) OPC UA Client에서 확인 가능한 더미 데이터
 
-네임스페이스 URI:
-
-- `urn:lsexp2:test:namespace`
-
 더미 NodeId:
 
-- `ns=2;s=LS_EXP2/Heartbeat` (Boolean, 1초마다 true/false 토글)
-- `ns=2;s=LS_EXP2/temp` (UInt16, 1초마다 200~319 범위 랜덤 변경)
+- `ns=<서버 콘솔에 출력된 값>;s=LS_EXP2/Heartbeat` (Boolean, 1초마다 true/false 토글)
+- `ns=<서버 콘솔에 출력된 값>;s=LS_EXP2/temp` (UInt16, 1초마다 200~319 범위 랜덤 변경)
 
 ## 4) HMI(LS eXP2-1000D) Client 설정 예시
 
@@ -45,8 +41,7 @@ Milo API 버전 충돌 가능성을 줄이기 위해 서버는 단순하게 구�
 5. User Authentication: `Anonymous`
 6. 위 NodeId를 태그로 등록 후 값 모니터링
 
-> 참고: `ns=2`는 고정이 아니며 실행 시점 환경에 따라 네임스페이스 인덱스가 달라질 수 있습니다.
-> 서버 콘솔에 출력되는 `ns=<index>;s=...` 값을 사용하거나 Namespace URI(`urn:lsexp2:test:namespace`) 기반으로 매핑해서 확인하세요.
+> 참고: 네임스페이스 인덱스는 실행 시점에 따라 달라질 수 있으니 서버 콘솔에 출력되는 `ns=<index>;s=...` 값을 사용하세요.
 
 
 ## 5) 연결 오류(BadCommunicationError) 체크리스트

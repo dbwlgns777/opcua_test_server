@@ -38,8 +38,6 @@ public class Main {
     private static final int ENDPOINT_PORT = 8624;
     private static final String ENDPOINT_PATH = "/lsexp2-test";
 
-    private static final String NAMESPACE_URI = "urn:lsexp2:test:namespace";
-
     public static void main(String[] args) throws Exception {
         OpcUaServer server = createServer();
 
@@ -52,7 +50,7 @@ public class Main {
         System.out.println("OPC UA Test Server started.");
         System.out.println("Endpoint: opc.tcp://" + BIND_IP + ":" + ENDPOINT_PORT + ENDPOINT_PATH);
         System.out.println("SecurityPolicy: None / MessageSecurityMode: None / Auth: Anonymous");
-        System.out.println("Namespace URI: " + NAMESPACE_URI);
+        System.out.println("Namespace Index used for dummy nodes: ns=" + nsIndex.intValue());
         System.out.println("Dummy NodeIds:");
         System.out.println(" - ns=" + nsIndex.intValue() + ";s=LS_EXP2/Heartbeat (Boolean)");
         System.out.println(" - ns=" + nsIndex.intValue() + ";s=LS_EXP2/temp (UInt16)");
@@ -103,11 +101,11 @@ public class Main {
     }
 
     private static UShort addDummyDataNodes(OpcUaServer server) {
-        UShort nsIndex = server.getNamespaceTable().addUri(NAMESPACE_URI);
-
         UaNode objectsFolder = server.getAddressSpaceManager()
                 .getManagedNode(Identifiers.ObjectsFolder)
                 .orElseThrow(() -> new IllegalStateException("ObjectsFolder not found"));
+
+        UShort nsIndex = objectsFolder.getNodeId().getNamespaceIndex();
 
         UaNodeContext nodeContext = objectsFolder.getNodeContext();
         @SuppressWarnings("unchecked")
