@@ -28,8 +28,6 @@ import java.util.Set;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
-import static org.eclipse.milo.opcua.stack.core.types.builtin.unsigned.Unsigned.ushort;
-
 public class Main {
 
     private static final String APP_URI = "urn:lsexp2:test:opcua:server";
@@ -53,7 +51,7 @@ public class Main {
         System.out.println("Namespace Index used for dummy nodes: ns=" + nsIndex.intValue());
         System.out.println("Dummy NodeIds:");
         System.out.println(" - ns=" + nsIndex.intValue() + ";s=LS_EXP2/Heartbeat (Boolean)");
-        System.out.println(" - ns=" + nsIndex.intValue() + ";s=LS_EXP2/temp (UInt16)");
+        System.out.println(" - ns=" + nsIndex.intValue() + ";s=LS_EXP2/temp (Int16)");
         System.out.println("Ctrl+C로 서버를 종료할 수 있습니다.");
 
         Thread.currentThread().join();
@@ -145,10 +143,10 @@ public class Main {
                 .setNodeId(new NodeId(nsIndex, "LS_EXP2/temp"))
                 .setBrowseName(new QualifiedName(nsIndex, "temp"))
                 .setDisplayName(LocalizedText.english("temp"))
-                .setDataType(Identifiers.UInt16)
+                .setDataType(Identifiers.Int16)
                 .setTypeDefinition(Identifiers.BaseDataVariableType)
                 .build();
-        tempNode.setValue(new DataValue(new Variant(ushort(250))));
+        tempNode.setValue(new DataValue(new Variant((short) 250)));
         nodeManager.addNode(tempNode);
         nodeManager.addReferences(new Reference(
                 rootFolder.getNodeId(),
@@ -162,8 +160,8 @@ public class Main {
             boolean heartbeat = Boolean.TRUE.equals(heartbeatNode.getValue().getValue().getValue());
             heartbeatNode.setValue(new DataValue(new Variant(!heartbeat)));
 
-            int tempRaw = 200 + (int) (Math.random() * 120);
-            tempNode.setValue(new DataValue(new Variant(ushort(tempRaw))));
+            short tempRaw = (short) (200 + (int) (Math.random() * 120));
+            tempNode.setValue(new DataValue(new Variant(tempRaw)));
         }, 1, 1, TimeUnit.SECONDS);
 
         Runtime.getRuntime().addShutdownHook(new Thread(scheduler::shutdownNow));
