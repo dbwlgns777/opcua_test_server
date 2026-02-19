@@ -23,6 +23,7 @@ import org.eclipse.milo.opcua.stack.core.types.enumerated.MessageSecurityMode;
 import org.eclipse.milo.opcua.stack.core.types.structured.BuildInfo;
 import org.eclipse.milo.opcua.stack.server.EndpointConfiguration;
 
+import java.lang.reflect.Method;
 import java.util.Set;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -33,6 +34,8 @@ public class Main {
 
     private static final String APP_URI = "urn:lsexp2:test:opcua:server";
     private static final String BIND_IP = "192.168.89.2";
+    private static final String BIND_ADDRESS = "0.0.0.0";
+    private static final int ENDPOINT_PORT = 8624;
     private static final String ENDPOINT_PATH = "/lsexp2-test";
 
     private static final String NAMESPACE_URI = "urn:lsexp2:test:namespace";
@@ -40,16 +43,14 @@ public class Main {
     public static void main(String[] args) throws Exception {
         OpcUaServer server = createServer();
 
-        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            server.shutdown();
-        }));
+        Runtime.getRuntime().addShutdownHook(new Thread(server::shutdown));
 
         addDummyDataNodes(server);
 
         server.startup().get();
 
         System.out.println("OPC UA Test Server started.");
-        System.out.println("Endpoint: opc.tcp://" + BIND_IP + ":8624" + ENDPOINT_PATH);
+        System.out.println("Endpoint: opc.tcp://" + BIND_IP + ":" + ENDPOINT_PORT + ENDPOINT_PATH);
         System.out.println("SecurityPolicy: None / MessageSecurityMode: None / Auth: Anonymous");
         System.out.println("Namespace URI: " + NAMESPACE_URI);
         System.out.println("Dummy NodeIds:");
@@ -61,16 +62,19 @@ public class Main {
     }
 
     private static OpcUaServer createServer() {
-        EndpointConfiguration endpoint = EndpointConfiguration.newBuilder()
-                .setBindAddress(BIND_IP)
+        EndpointConfiguration.Builder endpointBuilder = EndpointConfiguration.newBuilder()
+                .setBindAddress(BIND_ADDRESS)
                 .setHostname(BIND_IP)
                 .setPath(ENDPOINT_PATH)
                 .setTransportProfile(TransportProfile.TCP_UASC_UABINARY)
                 .setSecurityPolicy(SecurityPolicy.None)
-                .setSecurityMode(MessageSecurityMode.None)
-                .build();
+                .setSecurityMode(MessageSecurityMode.None);
 
-        OpcUaServerConfig config = OpcUaServerConfig.builder()
+        invokeIfPresent(endpointBuilder, "setBindPort", ENDPOINT_PORT);
+
+        EndpointConfiguration endpoint = endpointBuilder.build();
+
+        var configBuilder = OpcUaServerConfig.builder()
                 .setEndpoints(Set.of(endpoint))
                 .setIdentityValidator(new AnonymousIdentityValidator())
                 .setBuildInfo(new BuildInfo(
@@ -78,12 +82,24 @@ public class Main {
                         "openai",
                         "LS eXP2 OPC UA Test Server",
                         OpcUaServer.SDK_VERSION,
-                        "2.1.0",
+                        "2.1.1",
                         DateTime.now()
-                ))
-                .build();
+                ));
+
+        invokeIfPresent(configBuilder, "setBindPort", ENDPOINT_PORT);
+
+        OpcUaServerConfig config = configBuilder.build();
 
         return new OpcUaServer(config);
+    }
+
+    private static void invokeIfPresent(Object target, String methodName, int value) {
+        try {
+            Method m = target.getClass().getMethod(methodName, int.class);
+            m.invoke(target, value);
+        } catch (Exception ignored) {
+            // Milo 버전별 API 차이를 허용하기 위한 no-op
+        }
     }
 
     private static void addDummyDataNodes(OpcUaServer server) {
