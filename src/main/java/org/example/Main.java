@@ -17,7 +17,6 @@ import org.eclipse.milo.opcua.stack.core.types.builtin.DateTime;
 import org.eclipse.milo.opcua.stack.core.types.builtin.LocalizedText;
 import org.eclipse.milo.opcua.stack.core.types.builtin.NodeId;
 import org.eclipse.milo.opcua.stack.core.types.builtin.QualifiedName;
-import org.eclipse.milo.opcua.stack.core.types.builtin.StatusCode;
 import org.eclipse.milo.opcua.stack.core.types.builtin.Variant;
 import org.eclipse.milo.opcua.stack.core.types.builtin.unsigned.UShort;
 import org.eclipse.milo.opcua.stack.core.types.enumerated.MessageSecurityMode;
@@ -26,8 +25,9 @@ import org.eclipse.milo.opcua.stack.server.EndpointConfiguration;
 
 import java.util.Set;
 import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+
+import static org.eclipse.milo.opcua.stack.core.types.builtin.unsigned.Unsigned.ushort;
 
 public class Main {
 
@@ -53,9 +53,8 @@ public class Main {
         System.out.println("SecurityPolicy: None / MessageSecurityMode: None / Auth: Anonymous");
         System.out.println("Namespace URI: " + NAMESPACE_URI);
         System.out.println("Dummy NodeIds:");
-        System.out.println(" - ns=2;s=LS_EXP2/CurrentTemperature (Double)");
         System.out.println(" - ns=2;s=LS_EXP2/Heartbeat (Boolean)");
-        System.out.println(" - ns=2;s=LS_EXP2/ServerTime (DateTime)");
+        System.out.println(" - ns=2;s=LS_EXP2/temp (UInt16)");
         System.out.println("Ctrl+C로 서버를 종료할 수 있습니다.");
 
         Thread.currentThread().join();
@@ -120,17 +119,6 @@ public class Main {
                 true
         ));
 
-        UaVariableNode currentTemperatureNode = UaVariableNode.builder(nodeContext)
-                .setNodeId(new NodeId(nsIndex, "LS_EXP2/CurrentTemperature"))
-                .setBrowseName(new QualifiedName(nsIndex, "CurrentTemperature"))
-                .setDisplayName(LocalizedText.english("CurrentTemperature"))
-                .setDataType(Identifiers.Double)
-                .setTypeDefinition(Identifiers.BaseDataVariableType)
-                .build();
-        currentTemperatureNode.setValue(new DataValue(new Variant(23.5d)));
-        nodeManager.addNode(currentTemperatureNode);
-        rootFolder.addOrganizes(currentTemperatureNode);
-
         UaVariableNode heartbeatNode = UaVariableNode.builder(nodeContext)
                 .setNodeId(new NodeId(nsIndex, "LS_EXP2/Heartbeat"))
                 .setBrowseName(new QualifiedName(nsIndex, "Heartbeat"))
@@ -142,36 +130,24 @@ public class Main {
         nodeManager.addNode(heartbeatNode);
         rootFolder.addOrganizes(heartbeatNode);
 
-        UaVariableNode serverTimeNode = UaVariableNode.builder(nodeContext)
-                .setNodeId(new NodeId(nsIndex, "LS_EXP2/ServerTime"))
-                .setBrowseName(new QualifiedName(nsIndex, "ServerTime"))
-                .setDisplayName(LocalizedText.english("ServerTime"))
-                .setDataType(Identifiers.DateTime)
+        UaVariableNode tempNode = UaVariableNode.builder(nodeContext)
+                .setNodeId(new NodeId(nsIndex, "LS_EXP2/temp"))
+                .setBrowseName(new QualifiedName(nsIndex, "temp"))
+                .setDisplayName(LocalizedText.english("temp"))
+                .setDataType(Identifiers.UInt16)
                 .setTypeDefinition(Identifiers.BaseDataVariableType)
                 .build();
-        serverTimeNode.setValue(new DataValue(new Variant(DateTime.now())));
-        nodeManager.addNode(serverTimeNode);
-        rootFolder.addOrganizes(serverTimeNode);
+        tempNode.setValue(new DataValue(new Variant(ushort(250))));
+        nodeManager.addNode(tempNode);
+        rootFolder.addOrganizes(tempNode);
 
-        ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
+        var scheduler = Executors.newSingleThreadScheduledExecutor();
         scheduler.scheduleAtFixedRate(() -> {
-            double changingTemperature = 20.0d + Math.random() * 10.0d;
-            currentTemperatureNode.setValue(new DataValue(
-                    new Variant(changingTemperature),
-                    StatusCode.GOOD,
-                    DateTime.now(),
-                    DateTime.now()
-            ));
-
             boolean heartbeat = Boolean.TRUE.equals(heartbeatNode.getValue().getValue().getValue());
-            heartbeatNode.setValue(new DataValue(
-                    new Variant(!heartbeat),
-                    StatusCode.GOOD,
-                    DateTime.now(),
-                    DateTime.now()
-            ));
+            heartbeatNode.setValue(new DataValue(new Variant(!heartbeat)));
 
-            serverTimeNode.setValue(new DataValue(new Variant(DateTime.now())));
+            int tempRaw = 200 + (int) (Math.random() * 120);
+            tempNode.setValue(new DataValue(new Variant(ushort(tempRaw))));
         }, 1, 1, TimeUnit.SECONDS);
 
         Runtime.getRuntime().addShutdownHook(new Thread(scheduler::shutdownNow));

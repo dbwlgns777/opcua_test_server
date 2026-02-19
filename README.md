@@ -33,9 +33,8 @@ Milo API 버전 충돌 가능성을 줄이기 위해 서버는 단순하게 구�
 
 더미 NodeId:
 
-- `ns=2;s=LS_EXP2/CurrentTemperature` (Double, 1초마다 20.0~30.0 랜덤 변경)
 - `ns=2;s=LS_EXP2/Heartbeat` (Boolean, 1초마다 true/false 토글)
-- `ns=2;s=LS_EXP2/ServerTime` (DateTime, 현재 UTC 시간)
+- `ns=2;s=LS_EXP2/temp` (UInt16, 1초마다 200~319 범위 랜덤 변경)
 
 ## 4) HMI(LS eXP2-1000D) Client 설정 예시
 
