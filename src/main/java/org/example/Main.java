@@ -20,6 +20,7 @@ import org.eclipse.milo.opcua.stack.core.types.builtin.QualifiedName;
 import org.eclipse.milo.opcua.stack.core.types.builtin.Variant;
 import org.eclipse.milo.opcua.stack.core.types.builtin.unsigned.UShort;
 import org.eclipse.milo.opcua.stack.core.types.enumerated.MessageSecurityMode;
+import org.eclipse.milo.opcua.stack.core.types.enumerated.NodeClass;
 import org.eclipse.milo.opcua.stack.core.types.structured.BuildInfo;
 import org.eclipse.milo.opcua.stack.server.EndpointConfiguration;
 
@@ -102,6 +103,52 @@ public class Main {
         }
     }
 
+
+    private static boolean linkToObjectsFolder(OpcUaServer server, UaFolderNode rootFolder) {
+        try {
+            Object opcUaNamespace = server.getClass().getMethod("getOpcUaNamespace").invoke(server);
+            Method addReference = opcUaNamespace.getClass().getMethod(
+                    "addReference",
+                    NodeId.class,
+                    NodeClass.class,
+                    rootFolder.getNodeId().expanded().getClass(),
+                    NodeClass.class,
+                    NodeId.class,
+                    boolean.class
+            );
+            addReference.invoke(
+                    opcUaNamespace,
+                    Identifiers.ObjectsFolder,
+                    NodeClass.Object,
+                    rootFolder.getNodeId().expanded(),
+                    NodeClass.Object,
+                    Identifiers.Organizes,
+                    true
+            );
+            return true;
+        } catch (Exception ignored) {
+            // 일부 Milo 버전에서 getOpcUaNamespace()/addReference 시그니처가 다를 수 있다.
+        }
+
+        try {
+            server.getAddressSpaceManager().getManagedNode(Identifiers.ObjectsFolder).ifPresent(objectsNode -> {
+                if (objectsNode instanceof UaFolderNode folderNode) {
+                    folderNode.addOrganizes(rootFolder);
+                } else {
+                    objectsNode.addReference(new Reference(
+                            Identifiers.ObjectsFolder,
+                            Identifiers.Organizes,
+                            rootFolder.getNodeId().expanded(),
+                            true
+                    ));
+                }
+            });
+            return true;
+        } catch (Exception ignored) {
+            return false;
+        }
+    }
+
     private static void addDummyDataNodes(OpcUaServer server) {
         UShort nsIndex = server.getNamespaceTable().addUri(NAMESPACE_URI);
 
@@ -135,19 +182,11 @@ public class Main {
                 true
         ));
 
-        // UAExpert에서 Objects 아래에 보이도록 표준 ObjectsFolder 노드에도 Organizes 참조를 추가한다.
-        server.getAddressSpaceManager().getManagedNode(Identifiers.ObjectsFolder).ifPresent(objectsNode -> {
-            if (objectsNode instanceof UaFolderNode folderNode) {
-                folderNode.addOrganizes(rootFolder);
-            } else {
-                objectsNode.addReference(new Reference(
-                        Identifiers.ObjectsFolder,
-                        Identifiers.Organizes,
-                        rootFolder.getNodeId().expanded(),
-                        true
-                ));
-            }
-        });
+        // UAExpert에서 Objects 아래에 보이도록 표준 네임스페이스(ObjectsFolder) 쪽에 직접 참조를 추가한다.
+        boolean linked = linkToObjectsFolder(server, rootFolder);
+        if (!linked) {
+            System.out.println("[WARN] LS_EXP2 folder could not be linked to standard ObjectsFolder.");
+        }
 
         UaVariableNode heartbeatNode = UaVariableNode.builder(nodeContext)
                 .setNodeId(new NodeId(nsIndex, "LS_EXP2/Heartbeat"))
