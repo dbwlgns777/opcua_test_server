@@ -17,6 +17,7 @@ Milo API 버전 충돌 가능성을 줄이기 위해 서버는 단순하게 구�
 
 고정 엔드포인트:
 
+- `opc.tcp://192.168.89.2:8624/` (XP-Builder discovery 호환용)
 - `opc.tcp://192.168.89.2:8624/lsexp2-test`
 
 서버 보안 설정:
@@ -35,7 +36,8 @@ Milo API 버전 충돌 가능성을 줄이기 위해 서버는 단순하게 구�
 ## 4) HMI(LS eXP2-1000D) Client 설정 예시
 
 1. 통신 드라이버/프로토콜: OPC UA Client
-2. 서버 URL: `opc.tcp://192.168.89.2:8624/lsexp2-test`
+2. 서버 URL: `opc.tcp://192.168.89.2:8624/` (먼저 시도)
+   - 연결 실패 시: `opc.tcp://192.168.89.2:8624/lsexp2-test`로 재시도
 3. Security Policy: `None`
 4. Message Security Mode: `None`
 5. User Authentication: `Anonymous`

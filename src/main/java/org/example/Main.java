@@ -35,6 +35,7 @@ public class Main {
     private static final String BIND_ADDRESS = "0.0.0.0";
     private static final int ENDPOINT_PORT = 8624;
     private static final String ENDPOINT_PATH = "/lsexp2-test";
+    private static final String ROOT_ENDPOINT_PATH = "/";
 
     public static void main(String[] args) throws Exception {
         OpcUaServer server = createServer();
@@ -46,7 +47,8 @@ public class Main {
         UShort nsIndex = addDummyDataNodes(server);
 
         System.out.println("OPC UA Test Server started.");
-        System.out.println("Endpoint: opc.tcp://" + BIND_IP + ":" + ENDPOINT_PORT + ENDPOINT_PATH);
+        System.out.println("Discovery Endpoint: opc.tcp://" + BIND_IP + ":" + ENDPOINT_PORT + ROOT_ENDPOINT_PATH);
+        System.out.println("Service Endpoint: opc.tcp://" + BIND_IP + ":" + ENDPOINT_PORT + ENDPOINT_PATH);
         System.out.println("SecurityPolicy: None / MessageSecurityMode: None / Auth: Anonymous");
         System.out.println("Namespace Index used for dummy nodes: ns=" + nsIndex.intValue());
         System.out.println("Dummy NodeIds:");
@@ -58,27 +60,18 @@ public class Main {
     }
 
     private static OpcUaServer createServer() {
-        EndpointConfiguration.Builder endpointBuilder = EndpointConfiguration.newBuilder()
-                .setBindAddress(BIND_ADDRESS)
-                .setHostname(BIND_IP)
-                .setPath(ENDPOINT_PATH)
-                .setTransportProfile(TransportProfile.TCP_UASC_UABINARY)
-                .setSecurityPolicy(SecurityPolicy.None)
-                .setSecurityMode(MessageSecurityMode.None);
-
-        invokeIfPresent(endpointBuilder, "setBindPort", ENDPOINT_PORT);
-
-        EndpointConfiguration endpoint = endpointBuilder.build();
+        EndpointConfiguration serviceEndpoint = buildEndpoint(ENDPOINT_PATH);
+        EndpointConfiguration discoveryEndpoint = buildEndpoint(ROOT_ENDPOINT_PATH);
 
         var configBuilder = OpcUaServerConfig.builder()
-                .setEndpoints(Set.of(endpoint))
+                .setEndpoints(Set.of(discoveryEndpoint, serviceEndpoint))
                 .setIdentityValidator(new AnonymousIdentityValidator())
                 .setBuildInfo(new BuildInfo(
                         APP_URI,
                         "openai",
                         "LS eXP2 OPC UA Test Server",
                         OpcUaServer.SDK_VERSION,
-                        "2.1.2",
+                        "2.1.3",
                         DateTime.now()
                 ));
 
@@ -87,6 +80,19 @@ public class Main {
         OpcUaServerConfig config = configBuilder.build();
 
         return new OpcUaServer(config);
+    }
+
+    private static EndpointConfiguration buildEndpoint(String path) {
+        EndpointConfiguration.Builder endpointBuilder = EndpointConfiguration.newBuilder()
+                .setBindAddress(BIND_ADDRESS)
+                .setHostname(BIND_IP)
+                .setPath(path)
+                .setTransportProfile(TransportProfile.TCP_UASC_UABINARY)
+                .setSecurityPolicy(SecurityPolicy.None)
+                .setSecurityMode(MessageSecurityMode.None);
+
+        invokeIfPresent(endpointBuilder, "setBindPort", ENDPOINT_PORT);
+        return endpointBuilder.build();
     }
 
     private static void invokeIfPresent(Object target, String methodName, int value) {
