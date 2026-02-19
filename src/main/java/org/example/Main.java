@@ -118,12 +118,12 @@ public class Main {
                 LocalizedText.english("LS_EXP2")
         );
         nodeManager.addNode(rootFolder);
-        objectsFolder.addReference(new Reference(
+        nodeManager.addReferences(new Reference(
                 Identifiers.ObjectsFolder,
                 Identifiers.Organizes,
                 rootFolder.getNodeId().expanded(),
                 true
-        ));
+        ), server.getNamespaceTable());
 
         UaVariableNode heartbeatNode = UaVariableNode.builder(nodeContext)
                 .setNodeId(new NodeId(nsIndex, "LS_EXP2/Heartbeat"))
@@ -134,7 +134,12 @@ public class Main {
                 .build();
         heartbeatNode.setValue(new DataValue(new Variant(false)));
         nodeManager.addNode(heartbeatNode);
-        rootFolder.addOrganizes(heartbeatNode);
+        nodeManager.addReferences(new Reference(
+                rootFolder.getNodeId(),
+                Identifiers.Organizes,
+                heartbeatNode.getNodeId().expanded(),
+                true
+        ), server.getNamespaceTable());
 
         UaVariableNode tempNode = UaVariableNode.builder(nodeContext)
                 .setNodeId(new NodeId(nsIndex, "LS_EXP2/temp"))
@@ -145,7 +150,12 @@ public class Main {
                 .build();
         tempNode.setValue(new DataValue(new Variant(ushort(250))));
         nodeManager.addNode(tempNode);
-        rootFolder.addOrganizes(tempNode);
+        nodeManager.addReferences(new Reference(
+                rootFolder.getNodeId(),
+                Identifiers.Organizes,
+                tempNode.getNodeId().expanded(),
+                true
+        ), server.getNamespaceTable());
 
         var scheduler = Executors.newSingleThreadScheduledExecutor();
         scheduler.scheduleAtFixedRate(() -> {
