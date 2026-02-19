@@ -28,6 +28,11 @@ application {
 
 tasks.withType<JavaCompile> {
     options.release.set(17)
+    options.encoding = "UTF-8"
+}
+
+tasks.withType<JavaExec> {
+    jvmArgs("-Dfile.encoding=UTF-8")
 }
 
 tasks.test {

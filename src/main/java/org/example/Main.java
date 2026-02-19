@@ -4,6 +4,7 @@ import org.eclipse.milo.opcua.sdk.core.Reference;
 import org.eclipse.milo.opcua.sdk.server.OpcUaServer;
 import org.eclipse.milo.opcua.sdk.server.api.NodeManager;
 import org.eclipse.milo.opcua.sdk.server.api.config.OpcUaServerConfig;
+import org.eclipse.milo.opcua.sdk.core.AccessLevel;
 import org.eclipse.milo.opcua.sdk.server.identity.AnonymousIdentityValidator;
 import org.eclipse.milo.opcua.sdk.server.nodes.UaFolderNode;
 import org.eclipse.milo.opcua.sdk.server.nodes.UaNode;
@@ -54,6 +55,7 @@ public class Main {
         System.out.println("Dummy NodeIds:");
         System.out.println(" - ns=" + nsIndex.intValue() + ";s=LS_EXP2/Heartbeat (Boolean)");
         System.out.println(" - ns=" + nsIndex.intValue() + ";s=LS_EXP2/temp (Int16)");
+        System.out.println(" - ns=" + nsIndex.intValue() + ";s=LS_EXP2/HmiText (String, Read/Write)");
         System.out.println("Ctrl+C로 서버를 종료할 수 있습니다.");
 
         Thread.currentThread().join();
@@ -161,13 +163,39 @@ public class Main {
                 true
         ), server.getNamespaceTable());
 
+        UaVariableNode hmiTextNode = UaVariableNode.builder(nodeContext)
+                .setNodeId(new NodeId(nsIndex, "LS_EXP2/HmiText"))
+                .setBrowseName(new QualifiedName(nsIndex, "HmiText"))
+                .setDisplayName(LocalizedText.english("HmiText"))
+                .setDataType(Identifiers.String)
+                .setTypeDefinition(Identifiers.BaseDataVariableType)
+                .build();
+        hmiTextNode.setAccessLevel(AccessLevel.toValue(AccessLevel.READ_WRITE));
+        hmiTextNode.setUserAccessLevel(AccessLevel.toValue(AccessLevel.READ_WRITE));
+        hmiTextNode.setValue(new DataValue(new Variant("초기값: 서버 UTF-8 테스트")));
+        nodeManager.addNode(hmiTextNode);
+        nodeManager.addReferences(new Reference(
+                rootFolder.getNodeId(),
+                Identifiers.Organizes,
+                hmiTextNode.getNodeId().expanded(),
+                true
+        ), server.getNamespaceTable());
+
         var scheduler = Executors.newSingleThreadScheduledExecutor();
+        final String[] lastClientText = {String.valueOf(hmiTextNode.getValue().getValue().getValue())};
         scheduler.scheduleAtFixedRate(() -> {
             boolean heartbeat = Boolean.TRUE.equals(heartbeatNode.getValue().getValue().getValue());
             heartbeatNode.setValue(new DataValue(new Variant(!heartbeat)));
 
             short tempRaw = (short) (200 + (int) (Math.random() * 120));
             tempNode.setValue(new DataValue(new Variant(tempRaw)));
+
+            Object currentText = hmiTextNode.getValue().getValue().getValue();
+            String currentTextValue = currentText == null ? "" : currentText.toString();
+            if (!currentTextValue.equals(lastClientText[0])) {
+                lastClientText[0] = currentTextValue;
+                System.out.println("[CLIENT->SERVER] HmiText updated: " + currentTextValue);
+            }
         }, 1, 1, TimeUnit.SECONDS);
 
         Runtime.getRuntime().addShutdownHook(new Thread(scheduler::shutdownNow));

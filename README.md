@@ -32,6 +32,9 @@ Milo API 버전 충돌 가능성을 줄이기 위해 서버는 단순하게 구�
 
 - `ns=<서버 콘솔에 출력된 값>;s=LS_EXP2/Heartbeat` (Boolean, 1초마다 true/false 토글)
 - `ns=<서버 콘솔에 출력된 값>;s=LS_EXP2/temp` (Int16, 1초마다 200~319 범위 랜덤 변경)
+- `ns=<서버 콘솔에 출력된 값>;s=LS_EXP2/HmiText` (String, Read/Write, 초기값: `초기값: 서버 UTF-8 테스트`)
+
+> 한글이 `?????`로 보이면 인코딩 문제일 가능성이 높습니다. 본 프로젝트는 UTF-8로 컴파일/실행되도록 설정되어 있습니다.
 
 ## 4) HMI(LS eXP2-1000D) Client 설정 예시
 
@@ -42,6 +45,11 @@ Milo API 버전 충돌 가능성을 줄이기 위해 서버는 단순하게 구�
 4. Message Security Mode: `None`
 5. User Authentication: `Anonymous`
 6. 위 NodeId를 태그로 등록 후 값 모니터링
+
+### HMI -> Server 쓰기 테스트
+
+- HMI에서 `LS_EXP2/HmiText` 태그에 문자열을 쓰면 서버 콘솔에 아래 로그가 출력됩니다.
+  - `[CLIENT->SERVER] HmiText updated: <입력한 문자열>`
 
 > 참고: 네임스페이스 인덱스는 실행 시점에 따라 달라질 수 있으니 서버 콘솔에 출력되는 `ns=<index>;s=...` 값을 사용하세요.
 
