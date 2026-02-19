@@ -135,6 +135,20 @@ public class Main {
                 true
         ));
 
+        // UAExpert에서 Objects 아래에 보이도록 표준 ObjectsFolder 노드에도 Organizes 참조를 추가한다.
+        server.getAddressSpaceManager().getManagedNode(Identifiers.ObjectsFolder).ifPresent(objectsNode -> {
+            if (objectsNode instanceof UaFolderNode folderNode) {
+                folderNode.addOrganizes(rootFolder);
+            } else {
+                objectsNode.addReference(new Reference(
+                        Identifiers.ObjectsFolder,
+                        Identifiers.Organizes,
+                        rootFolder.getNodeId().expanded(),
+                        true
+                ));
+            }
+        });
+
         UaVariableNode heartbeatNode = UaVariableNode.builder(nodeContext)
                 .setNodeId(new NodeId(nsIndex, "LS_EXP2/Heartbeat"))
                 .setBrowseName(new QualifiedName(nsIndex, "Heartbeat"))
