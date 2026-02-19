@@ -1,5 +1,6 @@
 package org.example;
 
+import org.eclipse.milo.opcua.sdk.core.Reference;
 import org.eclipse.milo.opcua.sdk.server.OpcUaServer;
 import org.eclipse.milo.opcua.sdk.server.api.NodeManager;
 import org.eclipse.milo.opcua.sdk.server.api.config.OpcUaServerConfig;
@@ -104,7 +105,7 @@ public class Main {
     private static UShort addDummyDataNodes(OpcUaServer server) {
         UShort nsIndex = server.getNamespaceTable().addUri(NAMESPACE_URI);
 
-        UaFolderNode objectsFolder = (UaFolderNode) server.getAddressSpaceManager()
+        UaNode objectsFolder = server.getAddressSpaceManager()
                 .getManagedNode(Identifiers.ObjectsFolder)
                 .orElseThrow(() -> new IllegalStateException("ObjectsFolder not found"));
 
@@ -119,7 +120,12 @@ public class Main {
                 LocalizedText.english("LS_EXP2")
         );
         nodeManager.addNode(rootFolder);
-        objectsFolder.addOrganizes(rootFolder);
+        objectsFolder.addReference(new Reference(
+                Identifiers.ObjectsFolder,
+                Identifiers.Organizes,
+                rootFolder.getNodeId().expanded(),
+                true
+        ));
 
         UaVariableNode heartbeatNode = UaVariableNode.builder(nodeContext)
                 .setNodeId(new NodeId(nsIndex, "LS_EXP2/Heartbeat"))
