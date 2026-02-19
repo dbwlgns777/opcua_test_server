@@ -45,6 +45,9 @@ Milo API 버전 충돌 가능성을 줄이기 위해 서버는 단순하게 구�
 5. User Authentication: `Anonymous`
 6. 위 NodeId를 태그로 등록 후 값 모니터링
 
+> 참고: `ns=2`는 고정이 아니며 실행 시점 환경에 따라 네임스페이스 인덱스가 달라질 수 있습니다.
+> 서버 콘솔에 출력되는 `ns=<index>;s=...` 값을 사용하거나 Namespace URI(`urn:lsexp2:test:namespace`) 기반으로 매핑해서 확인하세요.
+
 
 ## 5) 연결 오류(BadCommunicationError) 체크리스트
 

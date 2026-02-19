@@ -46,17 +46,17 @@ public class Main {
 
         Runtime.getRuntime().addShutdownHook(new Thread(server::shutdown));
 
-        addDummyDataNodes(server);
-
         server.startup().get();
+
+        UShort nsIndex = addDummyDataNodes(server);
 
         System.out.println("OPC UA Test Server started.");
         System.out.println("Endpoint: opc.tcp://" + BIND_IP + ":" + ENDPOINT_PORT + ENDPOINT_PATH);
         System.out.println("SecurityPolicy: None / MessageSecurityMode: None / Auth: Anonymous");
         System.out.println("Namespace URI: " + NAMESPACE_URI);
         System.out.println("Dummy NodeIds:");
-        System.out.println(" - ns=2;s=LS_EXP2/Heartbeat (Boolean)");
-        System.out.println(" - ns=2;s=LS_EXP2/temp (UInt16)");
+        System.out.println(" - ns=" + nsIndex.intValue() + ";s=LS_EXP2/Heartbeat (Boolean)");
+        System.out.println(" - ns=" + nsIndex.intValue() + ";s=LS_EXP2/temp (UInt16)");
         System.out.println("Ctrl+C로 서버를 종료할 수 있습니다.");
 
         Thread.currentThread().join();
@@ -149,7 +149,7 @@ public class Main {
         }
     }
 
-    private static void addDummyDataNodes(OpcUaServer server) {
+    private static UShort addDummyDataNodes(OpcUaServer server) {
         UShort nsIndex = server.getNamespaceTable().addUri(NAMESPACE_URI);
 
         UaNodeManager nodeManager = new UaNodeManager();
@@ -220,5 +220,7 @@ public class Main {
         }, 1, 1, TimeUnit.SECONDS);
 
         Runtime.getRuntime().addShutdownHook(new Thread(scheduler::shutdownNow));
+
+        return nsIndex;
     }
 }
