@@ -58,3 +58,5 @@ Milo API 버전 충돌 가능성을 줄이기 위해 서버는 단순하게 구�
   - 인증: `Anonymous`
 - PC/장비 방화벽에서 `8624/TCP` 인바운드 허용이 필요합니다.
 - 서버와 HMI가 같은 네트워크 대역이며 `192.168.89.2`로 Ping이 되는지 확인하세요.
+
+- UAExpert에 휴지통 아이콘 노드가 보이면, 이전 세션의 stale NodeId일 수 있습니다. Disconnect 후 Reconnect/Address Space 새로고침 후 다시 Browse 하세요.

@@ -1,8 +1,7 @@
 package org.example;
 
-import org.eclipse.milo.opcua.sdk.core.Reference;
 import org.eclipse.milo.opcua.sdk.server.OpcUaServer;
-import org.eclipse.milo.opcua.sdk.server.UaNodeManager;
+import org.eclipse.milo.opcua.sdk.server.api.NodeManager;
 import org.eclipse.milo.opcua.sdk.server.api.config.OpcUaServerConfig;
 import org.eclipse.milo.opcua.sdk.server.identity.AnonymousIdentityValidator;
 import org.eclipse.milo.opcua.sdk.server.nodes.UaFolderNode;
@@ -20,7 +19,6 @@ import org.eclipse.milo.opcua.stack.core.types.builtin.QualifiedName;
 import org.eclipse.milo.opcua.stack.core.types.builtin.Variant;
 import org.eclipse.milo.opcua.stack.core.types.builtin.unsigned.UShort;
 import org.eclipse.milo.opcua.stack.core.types.enumerated.MessageSecurityMode;
-import org.eclipse.milo.opcua.stack.core.types.enumerated.NodeClass;
 import org.eclipse.milo.opcua.stack.core.types.structured.BuildInfo;
 import org.eclipse.milo.opcua.stack.server.EndpointConfiguration;
 
@@ -83,7 +81,7 @@ public class Main {
                         "openai",
                         "LS eXP2 OPC UA Test Server",
                         OpcUaServer.SDK_VERSION,
-                        "2.1.1",
+                        "2.1.2",
                         DateTime.now()
                 ));
 
@@ -103,69 +101,16 @@ public class Main {
         }
     }
 
-
-    private static boolean linkToObjectsFolder(OpcUaServer server, UaFolderNode rootFolder) {
-        try {
-            Object opcUaNamespace = server.getClass().getMethod("getOpcUaNamespace").invoke(server);
-            Method addReference = opcUaNamespace.getClass().getMethod(
-                    "addReference",
-                    NodeId.class,
-                    NodeClass.class,
-                    rootFolder.getNodeId().expanded().getClass(),
-                    NodeClass.class,
-                    NodeId.class,
-                    boolean.class
-            );
-            addReference.invoke(
-                    opcUaNamespace,
-                    Identifiers.ObjectsFolder,
-                    NodeClass.Object,
-                    rootFolder.getNodeId().expanded(),
-                    NodeClass.Object,
-                    Identifiers.Organizes,
-                    true
-            );
-            return true;
-        } catch (Exception ignored) {
-            // 일부 Milo 버전에서 getOpcUaNamespace()/addReference 시그니처가 다를 수 있다.
-        }
-
-        try {
-            server.getAddressSpaceManager().getManagedNode(Identifiers.ObjectsFolder).ifPresent(objectsNode -> {
-                if (objectsNode instanceof UaFolderNode folderNode) {
-                    folderNode.addOrganizes(rootFolder);
-                } else {
-                    objectsNode.addReference(new Reference(
-                            Identifiers.ObjectsFolder,
-                            Identifiers.Organizes,
-                            rootFolder.getNodeId().expanded(),
-                            true
-                    ));
-                }
-            });
-            return true;
-        } catch (Exception ignored) {
-            return false;
-        }
-    }
-
     private static UShort addDummyDataNodes(OpcUaServer server) {
         UShort nsIndex = server.getNamespaceTable().addUri(NAMESPACE_URI);
 
-        UaNodeManager nodeManager = new UaNodeManager();
-        server.getAddressSpaceManager().register(nodeManager);
+        UaFolderNode objectsFolder = (UaFolderNode) server.getAddressSpaceManager()
+                .getManagedNode(Identifiers.ObjectsFolder)
+                .orElseThrow(() -> new IllegalStateException("ObjectsFolder not found"));
 
-        UaNodeContext nodeContext = new UaNodeContext() {
-            @Override
-            public OpcUaServer getServer() {
-                return server;
-            }
-
-            @Override
-            public org.eclipse.milo.opcua.sdk.server.api.NodeManager<UaNode> getNodeManager() {
-                return nodeManager;
-            }
-        };
+        UaNodeContext nodeContext = objectsFolder.getNodeContext();
+        @SuppressWarnings("unchecked")
+        NodeManager<UaNode> nodeManager = (NodeManager<UaNode>) objectsFolder.getNodeManager();
 
         UaFolderNode rootFolder = new UaFolderNode(
                 nodeContext,
@@ -174,19 +119,7 @@ public class Main {
                 LocalizedText.english("LS_EXP2")
         );
         nodeManager.addNode(rootFolder);
-
-        nodeManager.addReference(new Reference(
-                Identifiers.ObjectsFolder,
-                Identifiers.Organizes,
-                rootFolder.getNodeId().expanded(),
-                true
-        ));
-
-        // UAExpert에서 Objects 아래에 보이도록 표준 네임스페이스(ObjectsFolder) 쪽에 직접 참조를 추가한다.
-        boolean linked = linkToObjectsFolder(server, rootFolder);
-        if (!linked) {
-            System.out.println("[WARN] LS_EXP2 folder could not be linked to standard ObjectsFolder.");
-        }
+        objectsFolder.addOrganizes(rootFolder);
 
         UaVariableNode heartbeatNode = UaVariableNode.builder(nodeContext)
                 .setNodeId(new NodeId(nsIndex, "LS_EXP2/Heartbeat"))
