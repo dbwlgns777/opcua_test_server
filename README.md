@@ -1,7 +1,7 @@
 # LS eXP2-1000D HMI 연동용 OPC UA Test Server (Java 17 / Gradle Kotlin DSL)
 
 이 프로젝트는 **Temurin OpenJDK 17** 환경을 기준으로 사용하는 OPC UA 연결 테스트 서버입니다.
-Milo API 버전 충돌 가능성을 줄이기 위해 서버는 단순하게 구성하고, HMI/UA Client에서 바로 확인 가능한 더미 태그를 제공합니다.
+LS eXP2-1000D HMI에서 작업일보 List 바인딩을 테스트할 수 있도록 구성되어 있습니다.
 
 ## 1) 실행 환경
 
@@ -17,7 +17,7 @@ Milo API 버전 충돌 가능성을 줄이기 위해 서버는 단순하게 구�
 
 고정 엔드포인트:
 
-- `opc.tcp://192.168.89.2:8624/` (XP-Builder discovery 호환용)
+- `opc.tcp://192.168.89.2:8624/` (discovery 호환용)
 - `opc.tcp://192.168.89.2:8624/lsexp2-test`
 
 서버 보안 설정:
@@ -26,42 +26,45 @@ Milo API 버전 충돌 가능성을 줄이기 위해 서버는 단순하게 구�
 - Message Security Mode: `None`
 - User Authentication: `Anonymous`
 
-## 3) OPC UA Client에서 확인 가능한 더미 데이터
+## 3) 작업일보 List 태그 구성
 
-더미 NodeId:
+요청 태그(클라이언트/HMI에서 쓰기):
 
-- `ns=<서버 콘솔에 출력된 값>;s=LS_EXP2/Heartbeat` (Boolean, 1초마다 true/false 토글)
-- `ns=<서버 콘솔에 출력된 값>;s=LS_EXP2/temp` (Int16, 1초마다 200~319 범위 랜덤 변경)
-- `ns=<서버 콘솔에 출력된 값>;s=LS_EXP2/HmiText` (String, Read/Write, 초기값: `초기값: 서버 UTF-8 테스트`)
+- `ns=<index>;s=LS_EXP2/workReportRequest` (Int16, Write 1~3)
 
-> 한글이 `?????`로 보이면 인코딩 문제일 가능성이 높습니다. 본 프로젝트는 UTF-8로 컴파일/실행되도록 설정되어 있습니다.
+리스트 표시 태그(총 5행, 각 행마다 5컬럼 String):
 
-## 4) HMI(LS eXP2-1000D) Client 설정 예시
+- `ns=<index>;s=LS_EXP2/workReport/row1/productcode`
+- `ns=<index>;s=LS_EXP2/workReport/row1/productname`
+- `ns=<index>;s=LS_EXP2/workReport/row1/customer`
+- `ns=<index>;s=LS_EXP2/workReport/row1/process`
+- `ns=<index>;s=LS_EXP2/workReport/row1/workdeadline`
+- 동일 패턴으로 `row2` ~ `row5`
+
+추가 테스트 태그:
+
+- `ns=<index>;s=LS_EXP2/Heartbeat` (Boolean)
+- `ns=<index>;s=LS_EXP2/temp` (Int16)
+
+## 4) 데이터 동작 방식
+
+서버에는 더미 작업일보 15건이 내림차순(P015 → P001)으로 고정 저장되어 있습니다.
+
+- `workReportRequest = 1` 전송 시: P015 ~ P011 (5건)
+- `workReportRequest = 2` 전송 시: P010 ~ P006 (5건)
+- `workReportRequest = 3` 전송 시: P005 ~ P001 (5건)
+
+요청 값이 1 미만이면 1로, 3 초과면 3으로 자동 보정됩니다.
+
+## 5) HMI 설정 예시
 
 1. 통신 드라이버/프로토콜: OPC UA Client
 2. 서버 URL: `opc.tcp://192.168.89.2:8624/` (먼저 시도)
-   - 연결 실패 시: `opc.tcp://192.168.89.2:8624/lsexp2-test`로 재시도
+   - 연결 실패 시: `opc.tcp://192.168.89.2:8624/lsexp2-test`
 3. Security Policy: `None`
 4. Message Security Mode: `None`
 5. User Authentication: `Anonymous`
-6. 위 NodeId를 태그로 등록 후 값 모니터링
+6. `workReportRequest` 태그를 쓰기 가능한 숫자 입력기(1~3)로 바인딩
+7. row1~row5의 5개 컬럼 태그를 화면 리스트 컴포넌트에 바인딩
 
-### HMI -> Server 쓰기 테스트
-
-- HMI에서 `LS_EXP2/HmiText` 태그에 문자열을 쓰면 서버 콘솔에 아래 로그가 출력됩니다.
-  - `[CLIENT->SERVER] HmiText updated: <입력한 문자열>`
-
-> 참고: 네임스페이스 인덱스는 실행 시점에 따라 달라질 수 있으니 서버 콘솔에 출력되는 `ns=<index>;s=...` 값을 사용하세요.
-
-
-## 5) 연결 오류(BadCommunicationError) 체크리스트
-
-- 서버는 `0.0.0.0:8624`로 바인딩되고, 클라이언트에는 `192.168.89.2:8624`를 안내합니다.
-- HMI/UaExpert 설정이 다음과 같은지 확인하세요.
-  - Security Policy: `None`
-  - Message Security Mode: `None`
-  - 인증: `Anonymous`
-- PC/장비 방화벽에서 `8624/TCP` 인바운드 허용이 필요합니다.
-- 서버와 HMI가 같은 네트워크 대역이며 `192.168.89.2`로 Ping이 되는지 확인하세요.
-
-- UAExpert에 휴지통 아이콘 노드가 보이면, 이전 세션의 stale NodeId일 수 있습니다. Disconnect 후 Reconnect/Address Space 새로고침 후 다시 Browse 하세요.
+> 참고: 네임스페이스 인덱스는 실행 시점에 따라 달라질 수 있으니 서버 콘솔에 출력되는 `ns=<index>`를 사용하세요.

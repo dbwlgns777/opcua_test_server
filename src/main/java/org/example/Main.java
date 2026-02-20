@@ -1,10 +1,10 @@
 package org.example;
 
+import org.eclipse.milo.opcua.sdk.core.AccessLevel;
 import org.eclipse.milo.opcua.sdk.core.Reference;
 import org.eclipse.milo.opcua.sdk.server.OpcUaServer;
 import org.eclipse.milo.opcua.sdk.server.api.NodeManager;
 import org.eclipse.milo.opcua.sdk.server.api.config.OpcUaServerConfig;
-import org.eclipse.milo.opcua.sdk.core.AccessLevel;
 import org.eclipse.milo.opcua.sdk.server.identity.AnonymousIdentityValidator;
 import org.eclipse.milo.opcua.sdk.server.nodes.UaFolderNode;
 import org.eclipse.milo.opcua.sdk.server.nodes.UaNode;
@@ -38,6 +38,27 @@ public class Main {
     private static final String ENDPOINT_PATH = "/lsexp2-test";
     private static final String ROOT_ENDPOINT_PATH = "/";
 
+    private record WorkItem(String productCode, String productName, String customer, String process, String workDeadline) {
+    }
+
+    private static final WorkItem[] DESC_WORK_ITEMS = {
+            new WorkItem("P015", "PRODUCT-015", "HANKOOK", "PACKING", "2026-03-15"),
+            new WorkItem("P014", "PRODUCT-014", "HYUNDAI", "QC", "2026-03-14"),
+            new WorkItem("P013", "PRODUCT-013", "SAMSUNG", "PAINT", "2026-03-13"),
+            new WorkItem("P012", "PRODUCT-012", "LG", "WELD", "2026-03-12"),
+            new WorkItem("P011", "PRODUCT-011", "KIA", "MOLD", "2026-03-11"),
+            new WorkItem("P010", "PRODUCT-010", "LOTTE", "PACKING", "2026-03-10"),
+            new WorkItem("P009", "PRODUCT-009", "POSCO", "QC", "2026-03-09"),
+            new WorkItem("P008", "PRODUCT-008", "HANWHA", "PAINT", "2026-03-08"),
+            new WorkItem("P007", "PRODUCT-007", "SK", "WELD", "2026-03-07"),
+            new WorkItem("P006", "PRODUCT-006", "CJ", "MOLD", "2026-03-06"),
+            new WorkItem("P005", "PRODUCT-005", "DOOSAN", "PACKING", "2026-03-05"),
+            new WorkItem("P004", "PRODUCT-004", "HYOSUNG", "QC", "2026-03-04"),
+            new WorkItem("P003", "PRODUCT-003", "KOLON", "PAINT", "2026-03-03"),
+            new WorkItem("P002", "PRODUCT-002", "AMORE", "WELD", "2026-03-02"),
+            new WorkItem("P001", "PRODUCT-001", "NONGSHIM", "MOLD", "2026-03-01")
+    };
+
     public static void main(String[] args) throws Exception {
         OpcUaServer server = createServer();
 
@@ -52,10 +73,8 @@ public class Main {
         System.out.println("Service Endpoint: opc.tcp://" + BIND_IP + ":" + ENDPOINT_PORT + ENDPOINT_PATH);
         System.out.println("SecurityPolicy: None / MessageSecurityMode: None / Auth: Anonymous");
         System.out.println("Namespace Index used for dummy nodes: ns=" + nsIndex.intValue());
-        System.out.println("Dummy NodeIds:");
-        System.out.println(" - ns=" + nsIndex.intValue() + ";s=LS_EXP2/Heartbeat (Boolean)");
-        System.out.println(" - ns=" + nsIndex.intValue() + ";s=LS_EXP2/temp (Int16)");
-        System.out.println(" - ns=" + nsIndex.intValue() + ";s=LS_EXP2/HmiText (String, Read/Write)");
+        System.out.println("WorkReport Request NodeId: ns=" + nsIndex.intValue() + ";s=LS_EXP2/workReportRequest (Int16, Write 1~3)");
+        System.out.println("WorkReport Row1 Example: ns=" + nsIndex.intValue() + ";s=LS_EXP2/workReport/row1/productcode (String)");
         System.out.println("Ctrl+C로 서버를 종료할 수 있습니다.");
 
         Thread.currentThread().join();
@@ -73,7 +92,7 @@ public class Main {
                         "openai",
                         "LS eXP2 OPC UA Test Server",
                         OpcUaServer.SDK_VERSION,
-                        "2.1.3",
+                        "2.2.0",
                         DateTime.now()
                 ));
 
@@ -140,12 +159,7 @@ public class Main {
                 .build();
         heartbeatNode.setValue(new DataValue(new Variant(false)));
         nodeManager.addNode(heartbeatNode);
-        nodeManager.addReferences(new Reference(
-                rootFolder.getNodeId(),
-                Identifiers.Organizes,
-                heartbeatNode.getNodeId().expanded(),
-                true
-        ), server.getNamespaceTable());
+        linkChild(nodeManager, server, rootFolder, heartbeatNode);
 
         UaVariableNode tempNode = UaVariableNode.builder(nodeContext)
                 .setNodeId(new NodeId(nsIndex, "LS_EXP2/temp"))
@@ -156,33 +170,52 @@ public class Main {
                 .build();
         tempNode.setValue(new DataValue(new Variant((short) 250)));
         nodeManager.addNode(tempNode);
-        nodeManager.addReferences(new Reference(
-                rootFolder.getNodeId(),
-                Identifiers.Organizes,
-                tempNode.getNodeId().expanded(),
-                true
-        ), server.getNamespaceTable());
+        linkChild(nodeManager, server, rootFolder, tempNode);
 
-        UaVariableNode hmiTextNode = UaVariableNode.builder(nodeContext)
-                .setNodeId(new NodeId(nsIndex, "LS_EXP2/HmiText"))
-                .setBrowseName(new QualifiedName(nsIndex, "HmiText"))
-                .setDisplayName(LocalizedText.english("HmiText"))
-                .setDataType(Identifiers.String)
+        UaVariableNode requestNode = UaVariableNode.builder(nodeContext)
+                .setNodeId(new NodeId(nsIndex, "LS_EXP2/workReportRequest"))
+                .setBrowseName(new QualifiedName(nsIndex, "workReportRequest"))
+                .setDisplayName(LocalizedText.english("workReportRequest"))
+                .setDataType(Identifiers.Int16)
                 .setTypeDefinition(Identifiers.BaseDataVariableType)
                 .build();
-        hmiTextNode.setAccessLevel(AccessLevel.toValue(AccessLevel.READ_WRITE));
-        hmiTextNode.setUserAccessLevel(AccessLevel.toValue(AccessLevel.READ_WRITE));
-        hmiTextNode.setValue(new DataValue(new Variant("초기값: 서버 UTF-8 테스트")));
-        nodeManager.addNode(hmiTextNode);
-        nodeManager.addReferences(new Reference(
-                rootFolder.getNodeId(),
-                Identifiers.Organizes,
-                hmiTextNode.getNodeId().expanded(),
-                true
-        ), server.getNamespaceTable());
+        requestNode.setAccessLevel(AccessLevel.toValue(AccessLevel.READ_WRITE));
+        requestNode.setUserAccessLevel(AccessLevel.toValue(AccessLevel.READ_WRITE));
+        requestNode.setValue(new DataValue(new Variant((short) 1)));
+        nodeManager.addNode(requestNode);
+        linkChild(nodeManager, server, rootFolder, requestNode);
+
+        UaVariableNode[] productCodeNodes = new UaVariableNode[5];
+        UaVariableNode[] productNameNodes = new UaVariableNode[5];
+        UaVariableNode[] customerNodes = new UaVariableNode[5];
+        UaVariableNode[] processNodes = new UaVariableNode[5];
+        UaVariableNode[] workDeadlineNodes = new UaVariableNode[5];
+
+        for (int i = 0; i < 5; i++) {
+            int row = i + 1;
+            productCodeNodes[i] = createStringNode(nodeContext, nsIndex, "LS_EXP2/workReport/row" + row + "/productcode", "productcode_row" + row);
+            productNameNodes[i] = createStringNode(nodeContext, nsIndex, "LS_EXP2/workReport/row" + row + "/productname", "productname_row" + row);
+            customerNodes[i] = createStringNode(nodeContext, nsIndex, "LS_EXP2/workReport/row" + row + "/customer", "customer_row" + row);
+            processNodes[i] = createStringNode(nodeContext, nsIndex, "LS_EXP2/workReport/row" + row + "/process", "process_row" + row);
+            workDeadlineNodes[i] = createStringNode(nodeContext, nsIndex, "LS_EXP2/workReport/row" + row + "/workdeadline", "workdeadline_row" + row);
+
+            nodeManager.addNode(productCodeNodes[i]);
+            nodeManager.addNode(productNameNodes[i]);
+            nodeManager.addNode(customerNodes[i]);
+            nodeManager.addNode(processNodes[i]);
+            nodeManager.addNode(workDeadlineNodes[i]);
+
+            linkChild(nodeManager, server, rootFolder, productCodeNodes[i]);
+            linkChild(nodeManager, server, rootFolder, productNameNodes[i]);
+            linkChild(nodeManager, server, rootFolder, customerNodes[i]);
+            linkChild(nodeManager, server, rootFolder, processNodes[i]);
+            linkChild(nodeManager, server, rootFolder, workDeadlineNodes[i]);
+        }
+
+        applyWorkReportPage((short) 1, productCodeNodes, productNameNodes, customerNodes, processNodes, workDeadlineNodes);
 
         var scheduler = Executors.newSingleThreadScheduledExecutor();
-        final String[] lastClientText = {String.valueOf(hmiTextNode.getValue().getValue().getValue())};
+        final short[] lastRequestValue = {1};
         scheduler.scheduleAtFixedRate(() -> {
             boolean heartbeat = Boolean.TRUE.equals(heartbeatNode.getValue().getValue().getValue());
             heartbeatNode.setValue(new DataValue(new Variant(!heartbeat)));
@@ -190,16 +223,72 @@ public class Main {
             short tempRaw = (short) (200 + (int) (Math.random() * 120));
             tempNode.setValue(new DataValue(new Variant(tempRaw)));
 
-            Object currentText = hmiTextNode.getValue().getValue().getValue();
-            String currentTextValue = currentText == null ? "" : currentText.toString();
-            if (!currentTextValue.equals(lastClientText[0])) {
-                lastClientText[0] = currentTextValue;
-                System.out.println("[CLIENT->SERVER] HmiText updated: " + currentTextValue);
+            short requestValue = normalizeRequest(readShortValue(requestNode.getValue().getValue().getValue()));
+            if (requestValue != lastRequestValue[0]) {
+                lastRequestValue[0] = requestValue;
+                requestNode.setValue(new DataValue(new Variant(requestValue)));
+                applyWorkReportPage(requestValue, productCodeNodes, productNameNodes, customerNodes, processNodes, workDeadlineNodes);
+                System.out.println("[CLIENT->SERVER] workReportRequest=" + requestValue + " applied (5 rows)");
             }
         }, 1, 1, TimeUnit.SECONDS);
 
         Runtime.getRuntime().addShutdownHook(new Thread(scheduler::shutdownNow));
 
         return nsIndex;
+    }
+
+    private static UaVariableNode createStringNode(UaNodeContext nodeContext, UShort nsIndex, String id, String browseName) {
+        UaVariableNode node = UaVariableNode.builder(nodeContext)
+                .setNodeId(new NodeId(nsIndex, id))
+                .setBrowseName(new QualifiedName(nsIndex, browseName))
+                .setDisplayName(LocalizedText.english(browseName))
+                .setDataType(Identifiers.String)
+                .setTypeDefinition(Identifiers.BaseDataVariableType)
+                .build();
+        node.setValue(new DataValue(new Variant("")));
+        return node;
+    }
+
+    private static void linkChild(NodeManager<UaNode> nodeManager, OpcUaServer server, UaFolderNode parent, UaVariableNode child) {
+        nodeManager.addReferences(new Reference(
+                parent.getNodeId(),
+                Identifiers.Organizes,
+                child.getNodeId().expanded(),
+                true
+        ), server.getNamespaceTable());
+    }
+
+    private static void applyWorkReportPage(short request,
+                                            UaVariableNode[] productCodeNodes,
+                                            UaVariableNode[] productNameNodes,
+                                            UaVariableNode[] customerNodes,
+                                            UaVariableNode[] processNodes,
+                                            UaVariableNode[] workDeadlineNodes) {
+        int offset = (request - 1) * 5;
+        for (int i = 0; i < 5; i++) {
+            WorkItem item = DESC_WORK_ITEMS[offset + i];
+            productCodeNodes[i].setValue(new DataValue(new Variant(item.productCode())));
+            productNameNodes[i].setValue(new DataValue(new Variant(item.productName())));
+            customerNodes[i].setValue(new DataValue(new Variant(item.customer())));
+            processNodes[i].setValue(new DataValue(new Variant(item.process())));
+            workDeadlineNodes[i].setValue(new DataValue(new Variant(item.workDeadline())));
+        }
+    }
+
+    private static short normalizeRequest(short value) {
+        if (value < 1) return 1;
+        if (value > 3) return 3;
+        return value;
+    }
+
+    private static short readShortValue(Object value) {
+        if (value instanceof Number number) {
+            return number.shortValue();
+        }
+        try {
+            return Short.parseShort(String.valueOf(value));
+        } catch (Exception ignored) {
+            return 1;
+        }
     }
 }
