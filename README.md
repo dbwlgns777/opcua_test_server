@@ -79,7 +79,7 @@ LS eXP2-1000D HMI에서 작업일보 List + Detail, 작업 상태 태그 바인�
   - `currentPage=3` -> 5~1번째
 - `selectedRow`(1~5)로 Detail 태그가 해당 설비/페이지 기준으로 갱신됨
 - 범위 보정:
-  - selectedEquipment: P0000001/P1234567/P0000002 (legacy 1/2/3 입력도 자동 변환)
+  - selectedEquipment: P0000001/P1234567/P0000002
   - currentPage: 1~3
   - selectedRow: 1~5
 - `selectedEquipment`/`currentPage`/`selectedRow` 값이 바뀌면 서버 콘솔에 `[CLIENT->SERVER] ... applied` 로그가 출력됨

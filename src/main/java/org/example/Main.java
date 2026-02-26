@@ -38,10 +38,6 @@ public class Main {
     private static final String ENDPOINT_PATH = "/lsexp2-test";
     private static final String ROOT_ENDPOINT_PATH = "/";
 
-    private static final String EQUIPMENT_CODE_1 = "P0000001";
-    private static final String EQUIPMENT_CODE_2 = "P1234567";
-    private static final String EQUIPMENT_CODE_3 = "P0000002";
-
     private record WorkItem(
             String productCode,
             String productName,
@@ -120,7 +116,7 @@ public class Main {
         System.out.println("Service Endpoint: opc.tcp://" + BIND_IP + ":" + ENDPOINT_PORT + ENDPOINT_PATH);
         System.out.println("SecurityPolicy: None / MessageSecurityMode: None / Auth: Anonymous");
         System.out.println("Namespace Index used for dummy nodes: ns=" + nsIndex.intValue());
-        System.out.println("Equipment NodeId: ns=" + nsIndex.intValue() + ";s=LS_EXP2/selectedEquipment (String, Write: P0000001|P1234567|P0000002)");
+        System.out.println("Equipment NodeId: ns=" + nsIndex.intValue() + ";s=LS_EXP2/selectedEquipment (String: P1234567|P0000001|P0000002)");
         System.out.println("Page NodeId: ns=" + nsIndex.intValue() + ";s=LS_EXP2/workReportCurrentPage (Int16, Write 1~3)");
         System.out.println("TotalPage NodeId: ns=" + nsIndex.intValue() + ";s=LS_EXP2/workReportTotalPage (Int16, ReadOnly)");
         System.out.println("Row NodeId: ns=" + nsIndex.intValue() + ";s=LS_EXP2/workReportSelectedRow (Int16, Write 1~5)");
@@ -218,7 +214,7 @@ public class Main {
 
         UaVariableNode selectedEquipmentNode = createStringRwNode(nodeContext, nsIndex,
                 "LS_EXP2/selectedEquipment", "selectedEquipment");
-        selectedEquipmentNode.setValue(new DataValue(new Variant(EQUIPMENT_CODE_1)));
+        selectedEquipmentNode.setValue(new DataValue(new Variant("P0000001")));
         nodeManager.addNode(selectedEquipmentNode);
         linkChild(nodeManager, server, rootFolder, selectedEquipmentNode);
 
@@ -318,7 +314,7 @@ public class Main {
         linkChild(nodeManager, server, rootFolder, workDeadlineDetailNode);
         linkChild(nodeManager, server, rootFolder, targetQuantityDetailNode);
 
-        String initialEquipmentCode = EQUIPMENT_CODE_1;
+        String initialEquipmentCode = "P0000001";
         short initialPage = 1;
         short initialRow = 1;
         WorkItem[] initialWorkItems = getWorkItemsByEquipmentCode(initialEquipmentCode);
@@ -349,11 +345,16 @@ public class Main {
             short pageValue = normalizePage(readShortValue(currentPageNode.getValue().getValue().getValue()));
             short rowValue = normalizeRow(readShortValue(selectedRowNode.getValue().getValue().getValue()));
 
-            boolean equipmentChanged = !equipmentCode.equals(lastEquipmentCode[0]);
-            if (equipmentChanged) {
+            WorkItem[] requestedWorkItems = getWorkItemsByEquipmentCode(equipmentCode);
+            boolean equipmentChanged = false;
+            if (requestedWorkItems != null && !equipmentCode.equals(lastEquipmentCode[0])) {
                 lastEquipmentCode[0] = equipmentCode;
                 selectedEquipmentNode.setValue(new DataValue(new Variant(equipmentCode)));
+                equipmentChanged = true;
                 System.out.println("[CLIENT->SERVER] selectedEquipment=" + equipmentCode + " applied");
+            }
+            if (requestedWorkItems == null && !equipmentCode.isEmpty() && !equipmentCode.equals(lastEquipmentCode[0])) {
+                System.out.println("[WARN] selectedEquipment invalid: " + equipmentCode + " (allowed: P1234567, P0000001, P0000002)");
             }
 
             boolean pageChanged = pageValue != lastPageValue[0];
@@ -371,13 +372,13 @@ public class Main {
             }
 
             WorkItem[] currentWorkItems = getWorkItemsByEquipmentCode(lastEquipmentCode[0]);
-            if (equipmentChanged || pageChanged) {
+            if (currentWorkItems != null && (equipmentChanged || pageChanged)) {
                 applyWorkReportPage(currentWorkItems, lastPageValue[0],
                         productCodeNodes, productNameNodes, customerNodes,
                         processNodes, workDeadlineNodes, targetQuantityNodes);
             }
 
-            if (equipmentChanged || pageChanged || rowChanged) {
+            if (currentWorkItems != null && (equipmentChanged || pageChanged || rowChanged)) {
                 applyDetailByPageAndRow(currentWorkItems, lastPageValue[0], lastRowValue[0],
                         productCodeDetailNode, productNameDetailNode, customerDetailNode,
                         processDetailNode, workDeadlineDetailNode, targetQuantityDetailNode);
@@ -535,18 +536,15 @@ public class Main {
     }
 
     private static String normalizeEquipmentCode(Object value) {
-        String text = String.valueOf(value).trim();
-        if (EQUIPMENT_CODE_1.equals(text) || "1".equals(text)) return EQUIPMENT_CODE_1;
-        if (EQUIPMENT_CODE_2.equals(text) || "2".equals(text)) return EQUIPMENT_CODE_2;
-        if (EQUIPMENT_CODE_3.equals(text) || "3".equals(text)) return EQUIPMENT_CODE_3;
-        return EQUIPMENT_CODE_1;
+        return String.valueOf(value).trim();
     }
 
     private static WorkItem[] getWorkItemsByEquipmentCode(String equipmentCode) {
         return switch (normalizeEquipmentCode(equipmentCode)) {
-            case EQUIPMENT_CODE_2 -> EQUIPMENT_2_WORK_ITEMS;
-            case EQUIPMENT_CODE_3 -> EQUIPMENT_3_WORK_ITEMS;
-            default -> EQUIPMENT_1_WORK_ITEMS;
+            case "P1234567" -> EQUIPMENT_2_WORK_ITEMS;
+            case "P0000002" -> EQUIPMENT_3_WORK_ITEMS;
+            case "P0000001" -> EQUIPMENT_1_WORK_ITEMS;
+            default -> null;
         };
     }
 
