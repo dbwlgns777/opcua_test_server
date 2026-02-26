@@ -1,7 +1,7 @@
 # LS eXP2-1000D HMI 연동용 OPC UA Test Server (Java 17 / Gradle Kotlin DSL)
 
 이 프로젝트는 **Temurin OpenJDK 17** 환경을 기준으로 사용하는 OPC UA 연결 테스트 서버입니다.
-LS eXP2-1000D HMI에서 작업일보 List 바인딩을 테스트할 수 있도록 구성되어 있습니다.
+LS eXP2-1000D HMI에서 작업일보 List + 상세 페이지 바인딩을 테스트할 수 있도록 구성되어 있습니다.
 
 ## 1) 실행 환경
 
@@ -26,13 +26,14 @@ LS eXP2-1000D HMI에서 작업일보 List 바인딩을 테스트할 수 있도�
 - Message Security Mode: `None`
 - User Authentication: `Anonymous`
 
-## 3) 작업일보 List 태그 구성
+## 3) 작업일보 List + Detail 태그 구성
 
-요청 태그(클라이언트/HMI에서 쓰기):
+### 3-1) 클라이언트/HMI에서 서버로 보내는 입력 태그
 
-- `ns=<index>;s=LS_EXP2/workReportRequest` (Int16, Write 1~3)
+- `ns=<index>;s=LS_EXP2/workReportCurrentPage` (Int16, Write 1~3)
+- `ns=<index>;s=LS_EXP2/workReportSelectedRow` (Int16, Write 1~5)
 
-리스트 표시 태그(총 5행, 각 행마다 5컬럼 String):
+### 3-2) 리스트 표시 태그 (5행 x 5컬럼)
 
 - `ns=<index>;s=LS_EXP2/workReport/row1/productcode`
 - `ns=<index>;s=LS_EXP2/workReport/row1/productname`
@@ -41,7 +42,15 @@ LS eXP2-1000D HMI에서 작업일보 List 바인딩을 테스트할 수 있도�
 - `ns=<index>;s=LS_EXP2/workReport/row1/workdeadline`
 - 동일 패턴으로 `row2` ~ `row5`
 
-추가 테스트 태그:
+### 3-3) 상세 페이지 표시 태그 (선택 row 기준)
+
+- `ns=<index>;s=LS_EXP2/workReport/detail/productcodeDetail`
+- `ns=<index>;s=LS_EXP2/workReport/detail/productnameDetail`
+- `ns=<index>;s=LS_EXP2/workReport/detail/customerDetail`
+- `ns=<index>;s=LS_EXP2/workReport/detail/processDetail`
+- `ns=<index>;s=LS_EXP2/workReport/detail/workdeadlineDetail`
+
+### 3-4) 추가 테스트 태그
 
 - `ns=<index>;s=LS_EXP2/Heartbeat` (Boolean)
 - `ns=<index>;s=LS_EXP2/temp` (Int16)
@@ -50,11 +59,18 @@ LS eXP2-1000D HMI에서 작업일보 List 바인딩을 테스트할 수 있도�
 
 서버에는 더미 작업일보 15건이 내림차순(P015 → P001)으로 고정 저장되어 있습니다.
 
-- `workReportRequest = 1` 전송 시: P015 ~ P011 (5건)
-- `workReportRequest = 2` 전송 시: P010 ~ P006 (5건)
-- `workReportRequest = 3` 전송 시: P005 ~ P001 (5건)
+- `workReportCurrentPage = 1`: P015 ~ P011 (리스트 5건)
+- `workReportCurrentPage = 2`: P010 ~ P006 (리스트 5건)
+- `workReportCurrentPage = 3`: P005 ~ P001 (리스트 5건)
 
-요청 값이 1 미만이면 1로, 3 초과면 3으로 자동 보정됩니다.
+그리고 `workReportSelectedRow` (1~5)로 선택한 행의 데이터가 detail 태그 5개에 반영됩니다.
+
+예시)
+- `currentPage=2`, `selectedRow=3` -> 전체 15건 기준 8번째 항목(P008)의 컬럼 값이 detail 태그로 출력
+
+요청 값 보정:
+- currentPage: 1 미만 -> 1, 3 초과 -> 3
+- selectedRow: 1 미만 -> 1, 5 초과 -> 5
 
 ## 5) HMI 설정 예시
 
@@ -64,7 +80,9 @@ LS eXP2-1000D HMI에서 작업일보 List 바인딩을 테스트할 수 있도�
 3. Security Policy: `None`
 4. Message Security Mode: `None`
 5. User Authentication: `Anonymous`
-6. `workReportRequest` 태그를 쓰기 가능한 숫자 입력기(1~3)로 바인딩
-7. row1~row5의 5개 컬럼 태그를 화면 리스트 컴포넌트에 바인딩
+6. `workReportCurrentPage` 태그를 숫자 입력기(1~3)로 바인딩
+7. `workReportSelectedRow` 태그를 숫자 입력기(1~5) 또는 선택 인덱스로 바인딩
+8. row1~row5의 5개 컬럼 태그를 리스트 컴포넌트에 바인딩
+9. detail 5개 태그를 상세 화면 컴포넌트에 바인딩
 
 > 참고: 네임스페이스 인덱스는 실행 시점에 따라 달라질 수 있으니 서버 콘솔에 출력되는 `ns=<index>`를 사용하세요.

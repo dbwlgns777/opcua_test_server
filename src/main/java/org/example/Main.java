@@ -73,8 +73,9 @@ public class Main {
         System.out.println("Service Endpoint: opc.tcp://" + BIND_IP + ":" + ENDPOINT_PORT + ENDPOINT_PATH);
         System.out.println("SecurityPolicy: None / MessageSecurityMode: None / Auth: Anonymous");
         System.out.println("Namespace Index used for dummy nodes: ns=" + nsIndex.intValue());
-        System.out.println("WorkReport Request NodeId: ns=" + nsIndex.intValue() + ";s=LS_EXP2/workReportRequest (Int16, Write 1~3)");
-        System.out.println("WorkReport Row1 Example: ns=" + nsIndex.intValue() + ";s=LS_EXP2/workReport/row1/productcode (String)");
+        System.out.println("Page NodeId: ns=" + nsIndex.intValue() + ";s=LS_EXP2/workReportCurrentPage (Int16, Write 1~3)");
+        System.out.println("Row NodeId: ns=" + nsIndex.intValue() + ";s=LS_EXP2/workReportSelectedRow (Int16, Write 1~5)");
+        System.out.println("Detail Example: ns=" + nsIndex.intValue() + ";s=LS_EXP2/workReport/detail/productcodeDetail (String)");
         System.out.println("Ctrl+C로 서버를 종료할 수 있습니다.");
 
         Thread.currentThread().join();
@@ -92,7 +93,7 @@ public class Main {
                         "openai",
                         "LS eXP2 OPC UA Test Server",
                         OpcUaServer.SDK_VERSION,
-                        "2.2.0",
+                        "2.3.0",
                         DateTime.now()
                 ));
 
@@ -172,18 +173,31 @@ public class Main {
         nodeManager.addNode(tempNode);
         linkChild(nodeManager, server, rootFolder, tempNode);
 
-        UaVariableNode requestNode = UaVariableNode.builder(nodeContext)
-                .setNodeId(new NodeId(nsIndex, "LS_EXP2/workReportRequest"))
-                .setBrowseName(new QualifiedName(nsIndex, "workReportRequest"))
-                .setDisplayName(LocalizedText.english("workReportRequest"))
+        UaVariableNode currentPageNode = UaVariableNode.builder(nodeContext)
+                .setNodeId(new NodeId(nsIndex, "LS_EXP2/workReportCurrentPage"))
+                .setBrowseName(new QualifiedName(nsIndex, "workReportCurrentPage"))
+                .setDisplayName(LocalizedText.english("workReportCurrentPage"))
                 .setDataType(Identifiers.Int16)
                 .setTypeDefinition(Identifiers.BaseDataVariableType)
                 .build();
-        requestNode.setAccessLevel(AccessLevel.toValue(AccessLevel.READ_WRITE));
-        requestNode.setUserAccessLevel(AccessLevel.toValue(AccessLevel.READ_WRITE));
-        requestNode.setValue(new DataValue(new Variant((short) 1)));
-        nodeManager.addNode(requestNode);
-        linkChild(nodeManager, server, rootFolder, requestNode);
+        currentPageNode.setAccessLevel(AccessLevel.toValue(AccessLevel.READ_WRITE));
+        currentPageNode.setUserAccessLevel(AccessLevel.toValue(AccessLevel.READ_WRITE));
+        currentPageNode.setValue(new DataValue(new Variant((short) 1)));
+        nodeManager.addNode(currentPageNode);
+        linkChild(nodeManager, server, rootFolder, currentPageNode);
+
+        UaVariableNode selectedRowNode = UaVariableNode.builder(nodeContext)
+                .setNodeId(new NodeId(nsIndex, "LS_EXP2/workReportSelectedRow"))
+                .setBrowseName(new QualifiedName(nsIndex, "workReportSelectedRow"))
+                .setDisplayName(LocalizedText.english("workReportSelectedRow"))
+                .setDataType(Identifiers.Int16)
+                .setTypeDefinition(Identifiers.BaseDataVariableType)
+                .build();
+        selectedRowNode.setAccessLevel(AccessLevel.toValue(AccessLevel.READ_WRITE));
+        selectedRowNode.setUserAccessLevel(AccessLevel.toValue(AccessLevel.READ_WRITE));
+        selectedRowNode.setValue(new DataValue(new Variant((short) 1)));
+        nodeManager.addNode(selectedRowNode);
+        linkChild(nodeManager, server, rootFolder, selectedRowNode);
 
         UaVariableNode[] productCodeNodes = new UaVariableNode[5];
         UaVariableNode[] productNameNodes = new UaVariableNode[5];
@@ -212,10 +226,38 @@ public class Main {
             linkChild(nodeManager, server, rootFolder, workDeadlineNodes[i]);
         }
 
-        applyWorkReportPage((short) 1, productCodeNodes, productNameNodes, customerNodes, processNodes, workDeadlineNodes);
+        UaVariableNode productCodeDetailNode = createStringNode(nodeContext, nsIndex,
+                "LS_EXP2/workReport/detail/productcodeDetail", "productcodeDetail");
+        UaVariableNode productNameDetailNode = createStringNode(nodeContext, nsIndex,
+                "LS_EXP2/workReport/detail/productnameDetail", "productnameDetail");
+        UaVariableNode customerDetailNode = createStringNode(nodeContext, nsIndex,
+                "LS_EXP2/workReport/detail/customerDetail", "customerDetail");
+        UaVariableNode processDetailNode = createStringNode(nodeContext, nsIndex,
+                "LS_EXP2/workReport/detail/processDetail", "processDetail");
+        UaVariableNode workDeadlineDetailNode = createStringNode(nodeContext, nsIndex,
+                "LS_EXP2/workReport/detail/workdeadlineDetail", "workdeadlineDetail");
+
+        nodeManager.addNode(productCodeDetailNode);
+        nodeManager.addNode(productNameDetailNode);
+        nodeManager.addNode(customerDetailNode);
+        nodeManager.addNode(processDetailNode);
+        nodeManager.addNode(workDeadlineDetailNode);
+
+        linkChild(nodeManager, server, rootFolder, productCodeDetailNode);
+        linkChild(nodeManager, server, rootFolder, productNameDetailNode);
+        linkChild(nodeManager, server, rootFolder, customerDetailNode);
+        linkChild(nodeManager, server, rootFolder, processDetailNode);
+        linkChild(nodeManager, server, rootFolder, workDeadlineDetailNode);
+
+        short initialPage = 1;
+        short initialRow = 1;
+        applyWorkReportPage(initialPage, productCodeNodes, productNameNodes, customerNodes, processNodes, workDeadlineNodes);
+        applyDetailByPageAndRow(initialPage, initialRow,
+                productCodeDetailNode, productNameDetailNode, customerDetailNode, processDetailNode, workDeadlineDetailNode);
 
         var scheduler = Executors.newSingleThreadScheduledExecutor();
-        final short[] lastRequestValue = {1};
+        final short[] lastPageValue = {initialPage};
+        final short[] lastRowValue = {initialRow};
         scheduler.scheduleAtFixedRate(() -> {
             boolean heartbeat = Boolean.TRUE.equals(heartbeatNode.getValue().getValue().getValue());
             heartbeatNode.setValue(new DataValue(new Variant(!heartbeat)));
@@ -223,12 +265,27 @@ public class Main {
             short tempRaw = (short) (200 + (int) (Math.random() * 120));
             tempNode.setValue(new DataValue(new Variant(tempRaw)));
 
-            short requestValue = normalizeRequest(readShortValue(requestNode.getValue().getValue().getValue()));
-            if (requestValue != lastRequestValue[0]) {
-                lastRequestValue[0] = requestValue;
-                requestNode.setValue(new DataValue(new Variant(requestValue)));
-                applyWorkReportPage(requestValue, productCodeNodes, productNameNodes, customerNodes, processNodes, workDeadlineNodes);
-                System.out.println("[CLIENT->SERVER] workReportRequest=" + requestValue + " applied (5 rows)");
+            short pageValue = normalizePage(readShortValue(currentPageNode.getValue().getValue().getValue()));
+            short rowValue = normalizeRow(readShortValue(selectedRowNode.getValue().getValue().getValue()));
+
+            boolean pageChanged = pageValue != lastPageValue[0];
+            if (pageChanged) {
+                lastPageValue[0] = pageValue;
+                currentPageNode.setValue(new DataValue(new Variant(pageValue)));
+                applyWorkReportPage(pageValue, productCodeNodes, productNameNodes, customerNodes, processNodes, workDeadlineNodes);
+                System.out.println("[CLIENT->SERVER] currentPage=" + pageValue + " applied (5 rows)");
+            }
+
+            boolean rowChanged = rowValue != lastRowValue[0];
+            if (rowChanged) {
+                lastRowValue[0] = rowValue;
+                selectedRowNode.setValue(new DataValue(new Variant(rowValue)));
+                System.out.println("[CLIENT->SERVER] selectedRow=" + rowValue + " applied");
+            }
+
+            if (pageChanged || rowChanged) {
+                applyDetailByPageAndRow(pageValue, rowValue,
+                        productCodeDetailNode, productNameDetailNode, customerDetailNode, processDetailNode, workDeadlineDetailNode);
             }
         }, 1, 1, TimeUnit.SECONDS);
 
@@ -258,13 +315,13 @@ public class Main {
         ), server.getNamespaceTable());
     }
 
-    private static void applyWorkReportPage(short request,
+    private static void applyWorkReportPage(short currentPage,
                                             UaVariableNode[] productCodeNodes,
                                             UaVariableNode[] productNameNodes,
                                             UaVariableNode[] customerNodes,
                                             UaVariableNode[] processNodes,
                                             UaVariableNode[] workDeadlineNodes) {
-        int offset = (request - 1) * 5;
+        int offset = (currentPage - 1) * 5;
         for (int i = 0; i < 5; i++) {
             WorkItem item = DESC_WORK_ITEMS[offset + i];
             productCodeNodes[i].setValue(new DataValue(new Variant(item.productCode())));
@@ -275,9 +332,32 @@ public class Main {
         }
     }
 
-    private static short normalizeRequest(short value) {
+    private static void applyDetailByPageAndRow(short currentPage,
+                                                short selectedRow,
+                                                UaVariableNode productCodeDetailNode,
+                                                UaVariableNode productNameDetailNode,
+                                                UaVariableNode customerDetailNode,
+                                                UaVariableNode processDetailNode,
+                                                UaVariableNode workDeadlineDetailNode) {
+        int itemIndex = (currentPage - 1) * 5 + (selectedRow - 1);
+        WorkItem selectedItem = DESC_WORK_ITEMS[itemIndex];
+
+        productCodeDetailNode.setValue(new DataValue(new Variant(selectedItem.productCode())));
+        productNameDetailNode.setValue(new DataValue(new Variant(selectedItem.productName())));
+        customerDetailNode.setValue(new DataValue(new Variant(selectedItem.customer())));
+        processDetailNode.setValue(new DataValue(new Variant(selectedItem.process())));
+        workDeadlineDetailNode.setValue(new DataValue(new Variant(selectedItem.workDeadline())));
+    }
+
+    private static short normalizePage(short value) {
         if (value < 1) return 1;
         if (value > 3) return 3;
+        return value;
+    }
+
+    private static short normalizeRow(short value) {
+        if (value < 1) return 1;
+        if (value > 5) return 5;
         return value;
     }
 
