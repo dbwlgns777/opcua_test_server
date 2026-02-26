@@ -38,6 +38,10 @@ public class Main {
     private static final String ENDPOINT_PATH = "/lsexp2-test";
     private static final String ROOT_ENDPOINT_PATH = "/";
 
+    private static final String EQUIPMENT_CODE_1 = "P0000001";
+    private static final String EQUIPMENT_CODE_2 = "P1234567";
+    private static final String EQUIPMENT_CODE_3 = "P0000002";
+
     private record WorkItem(
             String productCode,
             String productName,
@@ -116,7 +120,7 @@ public class Main {
         System.out.println("Service Endpoint: opc.tcp://" + BIND_IP + ":" + ENDPOINT_PORT + ENDPOINT_PATH);
         System.out.println("SecurityPolicy: None / MessageSecurityMode: None / Auth: Anonymous");
         System.out.println("Namespace Index used for dummy nodes: ns=" + nsIndex.intValue());
-        System.out.println("Equipment NodeId: ns=" + nsIndex.intValue() + ";s=LS_EXP2/selectedEquipment (Int16, Write 1~3)");
+        System.out.println("Equipment NodeId: ns=" + nsIndex.intValue() + ";s=LS_EXP2/selectedEquipment (String, Write: P0000001|P1234567|P0000002)");
         System.out.println("Page NodeId: ns=" + nsIndex.intValue() + ";s=LS_EXP2/workReportCurrentPage (Int16, Write 1~3)");
         System.out.println("TotalPage NodeId: ns=" + nsIndex.intValue() + ";s=LS_EXP2/workReportTotalPage (Int16, ReadOnly)");
         System.out.println("Row NodeId: ns=" + nsIndex.intValue() + ";s=LS_EXP2/workReportSelectedRow (Int16, Write 1~5)");
@@ -212,9 +216,9 @@ public class Main {
         nodeManager.addNode(tempNode);
         linkChild(nodeManager, server, rootFolder, tempNode);
 
-        UaVariableNode selectedEquipmentNode = createInt16RwNode(nodeContext, nsIndex,
+        UaVariableNode selectedEquipmentNode = createStringRwNode(nodeContext, nsIndex,
                 "LS_EXP2/selectedEquipment", "selectedEquipment");
-        selectedEquipmentNode.setValue(new DataValue(new Variant((short) 1)));
+        selectedEquipmentNode.setValue(new DataValue(new Variant(EQUIPMENT_CODE_1)));
         nodeManager.addNode(selectedEquipmentNode);
         linkChild(nodeManager, server, rootFolder, selectedEquipmentNode);
 
@@ -314,10 +318,10 @@ public class Main {
         linkChild(nodeManager, server, rootFolder, workDeadlineDetailNode);
         linkChild(nodeManager, server, rootFolder, targetQuantityDetailNode);
 
-        short initialEquipment = 1;
+        String initialEquipmentCode = EQUIPMENT_CODE_1;
         short initialPage = 1;
         short initialRow = 1;
-        WorkItem[] initialWorkItems = getWorkItemsByEquipment(initialEquipment);
+        WorkItem[] initialWorkItems = getWorkItemsByEquipmentCode(initialEquipmentCode);
         applyWorkReportPage(initialWorkItems, initialPage,
                 productCodeNodes, productNameNodes, customerNodes, processNodes, workDeadlineNodes, targetQuantityNodes);
         applyDetailByPageAndRow(initialWorkItems, initialPage, initialRow,
@@ -325,7 +329,7 @@ public class Main {
                 processDetailNode, workDeadlineDetailNode, targetQuantityDetailNode);
 
         var scheduler = Executors.newSingleThreadScheduledExecutor();
-        final short[] lastEquipmentValue = {initialEquipment};
+        final String[] lastEquipmentCode = {initialEquipmentCode};
         final short[] lastPageValue = {initialPage};
         final short[] lastRowValue = {initialRow};
         final boolean[] lastWorkStart = {false};
@@ -341,15 +345,15 @@ public class Main {
             short tempRaw = (short) (200 + (int) (Math.random() * 120));
             tempNode.setValue(new DataValue(new Variant(tempRaw)));
 
-            short equipmentValue = normalizeEquipment(readShortValue(selectedEquipmentNode.getValue().getValue().getValue()));
+            String equipmentCode = normalizeEquipmentCode(selectedEquipmentNode.getValue().getValue().getValue());
             short pageValue = normalizePage(readShortValue(currentPageNode.getValue().getValue().getValue()));
             short rowValue = normalizeRow(readShortValue(selectedRowNode.getValue().getValue().getValue()));
 
-            boolean equipmentChanged = equipmentValue != lastEquipmentValue[0];
+            boolean equipmentChanged = !equipmentCode.equals(lastEquipmentCode[0]);
             if (equipmentChanged) {
-                lastEquipmentValue[0] = equipmentValue;
-                selectedEquipmentNode.setValue(new DataValue(new Variant(equipmentValue)));
-                System.out.println("[CLIENT->SERVER] selectedEquipment=" + equipmentValue + " applied");
+                lastEquipmentCode[0] = equipmentCode;
+                selectedEquipmentNode.setValue(new DataValue(new Variant(equipmentCode)));
+                System.out.println("[CLIENT->SERVER] selectedEquipment=" + equipmentCode + " applied");
             }
 
             boolean pageChanged = pageValue != lastPageValue[0];
@@ -366,7 +370,7 @@ public class Main {
                 System.out.println("[CLIENT->SERVER] selectedRow=" + rowValue + " applied");
             }
 
-            WorkItem[] currentWorkItems = getWorkItemsByEquipment(lastEquipmentValue[0]);
+            WorkItem[] currentWorkItems = getWorkItemsByEquipmentCode(lastEquipmentCode[0]);
             if (equipmentChanged || pageChanged) {
                 applyWorkReportPage(currentWorkItems, lastPageValue[0],
                         productCodeNodes, productNameNodes, customerNodes,
@@ -426,6 +430,13 @@ public class Main {
                 .setTypeDefinition(Identifiers.BaseDataVariableType)
                 .build();
         node.setValue(new DataValue(new Variant("")));
+        return node;
+    }
+
+    private static UaVariableNode createStringRwNode(UaNodeContext nodeContext, UShort nsIndex, String id, String browseName) {
+        UaVariableNode node = createStringNode(nodeContext, nsIndex, id, browseName);
+        node.setAccessLevel(AccessLevel.toValue(AccessLevel.READ_WRITE));
+        node.setUserAccessLevel(AccessLevel.toValue(AccessLevel.READ_WRITE));
         return node;
     }
 
@@ -523,16 +534,18 @@ public class Main {
         return value;
     }
 
-    private static short normalizeEquipment(short value) {
-        if (value < 1) return 1;
-        if (value > 3) return 3;
-        return value;
+    private static String normalizeEquipmentCode(Object value) {
+        String text = String.valueOf(value).trim();
+        if (EQUIPMENT_CODE_1.equals(text) || "1".equals(text)) return EQUIPMENT_CODE_1;
+        if (EQUIPMENT_CODE_2.equals(text) || "2".equals(text)) return EQUIPMENT_CODE_2;
+        if (EQUIPMENT_CODE_3.equals(text) || "3".equals(text)) return EQUIPMENT_CODE_3;
+        return EQUIPMENT_CODE_1;
     }
 
-    private static WorkItem[] getWorkItemsByEquipment(short equipmentNo) {
-        return switch (normalizeEquipment(equipmentNo)) {
-            case 2 -> EQUIPMENT_2_WORK_ITEMS;
-            case 3 -> EQUIPMENT_3_WORK_ITEMS;
+    private static WorkItem[] getWorkItemsByEquipmentCode(String equipmentCode) {
+        return switch (normalizeEquipmentCode(equipmentCode)) {
+            case EQUIPMENT_CODE_2 -> EQUIPMENT_2_WORK_ITEMS;
+            case EQUIPMENT_CODE_3 -> EQUIPMENT_3_WORK_ITEMS;
             default -> EQUIPMENT_1_WORK_ITEMS;
         };
     }
