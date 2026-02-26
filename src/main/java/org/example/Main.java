@@ -341,7 +341,9 @@ public class Main {
             short tempRaw = (short) (200 + (int) (Math.random() * 120));
             tempNode.setValue(new DataValue(new Variant(tempRaw)));
 
-            int equipmentNo = normalizeEquipmentNo(selectedEquipmentNode.getValue().getValue().getValue());
+            Object equipmentRawValue = selectedEquipmentNode.getValue().getValue().getValue();
+            int equipmentNo = normalizeEquipmentNo(equipmentRawValue);
+            System.out.println("[MONITOR] selectedEquipment raw=" + equipmentRawValue + ", normalized=" + equipmentNo);
             short pageValue = normalizePage(readShortValue(currentPageNode.getValue().getValue().getValue()));
             short rowValue = normalizeRow(readShortValue(selectedRowNode.getValue().getValue().getValue()));
 
