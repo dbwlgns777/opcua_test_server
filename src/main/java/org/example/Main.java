@@ -74,7 +74,8 @@ public class Main {
         System.out.println("SecurityPolicy: None / MessageSecurityMode: None / Auth: Anonymous");
         System.out.println("Namespace Index used for dummy nodes: ns=" + nsIndex.intValue());
         System.out.println("Page NodeId: ns=" + nsIndex.intValue() + ";s=LS_EXP2/workReportCurrentPage (Int16, Write 1~3)");
-        System.out.println("Row NodeId: ns=" + nsIndex.intValue() + ";s=LS_EXP2/workReportSelectedRow (Int16, Write 1~5)");
+        System.out.println("TotalPage NodeId: ns=" + nsIndex.intValue() + ";s=LS_EXP2/workReportTotalPage (Int16, ReadOnly)");
+System.out.println("Row NodeId: ns=" + nsIndex.intValue() + ";s=LS_EXP2/workReportSelectedRow (Int16, Write 1~5)");
         System.out.println("Detail Example: ns=" + nsIndex.intValue() + ";s=LS_EXP2/workReport/detail/productcodeDetail (String)");
         System.out.println("Ctrl+C로 서버를 종료할 수 있습니다.");
 
@@ -185,6 +186,19 @@ public class Main {
         currentPageNode.setValue(new DataValue(new Variant((short) 1)));
         nodeManager.addNode(currentPageNode);
         linkChild(nodeManager, server, rootFolder, currentPageNode);
+
+        UaVariableNode totalPageNode = UaVariableNode.builder(nodeContext)
+                .setNodeId(new NodeId(nsIndex, "LS_EXP2/workReportTotalPage"))
+                .setBrowseName(new QualifiedName(nsIndex, "workReportTotalPage"))
+                .setDisplayName(LocalizedText.english("workReportTotalPage"))
+                .setDataType(Identifiers.Int16)
+                .setTypeDefinition(Identifiers.BaseDataVariableType)
+                .build();
+        totalPageNode.setAccessLevel(AccessLevel.toValue(AccessLevel.READ_ONLY));
+        totalPageNode.setUserAccessLevel(AccessLevel.toValue(AccessLevel.READ_ONLY));
+        totalPageNode.setValue(new DataValue(new Variant((short) 3)));
+        nodeManager.addNode(totalPageNode);
+        linkChild(nodeManager, server, rootFolder, totalPageNode);
 
         UaVariableNode selectedRowNode = UaVariableNode.builder(nodeContext)
                 .setNodeId(new NodeId(nsIndex, "LS_EXP2/workReportSelectedRow"))

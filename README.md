@@ -31,6 +31,7 @@ LS eXP2-1000D HMI에서 작업일보 List + 상세 페이지 바인딩을 테스
 ### 3-1) 클라이언트/HMI에서 서버로 보내는 입력 태그
 
 - `ns=<index>;s=LS_EXP2/workReportCurrentPage` (Int16, Write 1~3)
+- `ns=<index>;s=LS_EXP2/workReportTotalPage` (Int16, ReadOnly, 값=3)
 - `ns=<index>;s=LS_EXP2/workReportSelectedRow` (Int16, Write 1~5)
 
 ### 3-2) 리스트 표시 태그 (5행 x 5컬럼)
@@ -70,6 +71,7 @@ LS eXP2-1000D HMI에서 작업일보 List + 상세 페이지 바인딩을 테스
 
 요청 값 보정:
 - currentPage: 1 미만 -> 1, 3 초과 -> 3
+- totalPage 태그는 항상 3으로 제공(페이지 기준점)
 - selectedRow: 1 미만 -> 1, 5 초과 -> 5
 
 ## 5) HMI 설정 예시
