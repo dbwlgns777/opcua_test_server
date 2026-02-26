@@ -48,7 +48,7 @@ public class Main {
     ) {
     }
 
-    private static final WorkItem[] DESC_WORK_ITEMS = {
+    private static final WorkItem[] EQUIPMENT_1_WORK_ITEMS = {
             new WorkItem("P015", "PRODUCT-015", "HANKOOK", "PACKING", "2026-03-15", (short) 950),
             new WorkItem("P014", "PRODUCT-014", "HYUNDAI", "QC", "2026-03-14", (short) 920),
             new WorkItem("P013", "PRODUCT-013", "SAMSUNG", "PAINT", "2026-03-13", (short) 900),
@@ -66,6 +66,42 @@ public class Main {
             new WorkItem("P001", "PRODUCT-001", "NONGSHIM", "MOLD", "2026-03-01", (short) 640)
     };
 
+    private static final WorkItem[] EQUIPMENT_2_WORK_ITEMS = {
+            new WorkItem("E2-P015", "EQ2-PRODUCT-015", "LOTTE", "ASSEMBLY", "2026-04-15", (short) 880),
+            new WorkItem("E2-P014", "EQ2-PRODUCT-014", "POSCO", "MACHINING", "2026-04-14", (short) 860),
+            new WorkItem("E2-P013", "EQ2-PRODUCT-013", "HANWHA", "QC", "2026-04-13", (short) 840),
+            new WorkItem("E2-P012", "EQ2-PRODUCT-012", "SK", "PAINT", "2026-04-12", (short) 820),
+            new WorkItem("E2-P011", "EQ2-PRODUCT-011", "CJ", "PACKING", "2026-04-11", (short) 800),
+            new WorkItem("E2-P010", "EQ2-PRODUCT-010", "DOOSAN", "ASSEMBLY", "2026-04-10", (short) 780),
+            new WorkItem("E2-P009", "EQ2-PRODUCT-009", "HYOSUNG", "MACHINING", "2026-04-09", (short) 760),
+            new WorkItem("E2-P008", "EQ2-PRODUCT-008", "KOLON", "QC", "2026-04-08", (short) 740),
+            new WorkItem("E2-P007", "EQ2-PRODUCT-007", "AMORE", "PAINT", "2026-04-07", (short) 720),
+            new WorkItem("E2-P006", "EQ2-PRODUCT-006", "NONGSHIM", "PACKING", "2026-04-06", (short) 700),
+            new WorkItem("E2-P005", "EQ2-PRODUCT-005", "HANKOOK", "ASSEMBLY", "2026-04-05", (short) 680),
+            new WorkItem("E2-P004", "EQ2-PRODUCT-004", "HYUNDAI", "MACHINING", "2026-04-04", (short) 660),
+            new WorkItem("E2-P003", "EQ2-PRODUCT-003", "SAMSUNG", "QC", "2026-04-03", (short) 640),
+            new WorkItem("E2-P002", "EQ2-PRODUCT-002", "LG", "PAINT", "2026-04-02", (short) 620),
+            new WorkItem("E2-P001", "EQ2-PRODUCT-001", "KIA", "PACKING", "2026-04-01", (short) 600)
+    };
+
+    private static final WorkItem[] EQUIPMENT_3_WORK_ITEMS = {
+            new WorkItem("E3-P015", "EQ3-PRODUCT-015", "ACE", "CUTTING", "2026-05-15", (short) 990),
+            new WorkItem("E3-P014", "EQ3-PRODUCT-014", "BETA", "WELD", "2026-05-14", (short) 970),
+            new WorkItem("E3-P013", "EQ3-PRODUCT-013", "COSMO", "MOLD", "2026-05-13", (short) 950),
+            new WorkItem("E3-P012", "EQ3-PRODUCT-012", "DELTA", "INSPECTION", "2026-05-12", (short) 930),
+            new WorkItem("E3-P011", "EQ3-PRODUCT-011", "ECHO", "PACKING", "2026-05-11", (short) 910),
+            new WorkItem("E3-P010", "EQ3-PRODUCT-010", "FUTURE", "CUTTING", "2026-05-10", (short) 890),
+            new WorkItem("E3-P009", "EQ3-PRODUCT-009", "GAMMA", "WELD", "2026-05-09", (short) 870),
+            new WorkItem("E3-P008", "EQ3-PRODUCT-008", "HERA", "MOLD", "2026-05-08", (short) 850),
+            new WorkItem("E3-P007", "EQ3-PRODUCT-007", "ION", "INSPECTION", "2026-05-07", (short) 830),
+            new WorkItem("E3-P006", "EQ3-PRODUCT-006", "JUNO", "PACKING", "2026-05-06", (short) 810),
+            new WorkItem("E3-P005", "EQ3-PRODUCT-005", "KRONOS", "CUTTING", "2026-05-05", (short) 790),
+            new WorkItem("E3-P004", "EQ3-PRODUCT-004", "LUNA", "WELD", "2026-05-04", (short) 770),
+            new WorkItem("E3-P003", "EQ3-PRODUCT-003", "MARS", "MOLD", "2026-05-03", (short) 750),
+            new WorkItem("E3-P002", "EQ3-PRODUCT-002", "NOVA", "INSPECTION", "2026-05-02", (short) 730),
+            new WorkItem("E3-P001", "EQ3-PRODUCT-001", "ORION", "PACKING", "2026-05-01", (short) 710)
+    };
+
     public static void main(String[] args) throws Exception {
         OpcUaServer server = createServer();
 
@@ -80,6 +116,7 @@ public class Main {
         System.out.println("Service Endpoint: opc.tcp://" + BIND_IP + ":" + ENDPOINT_PORT + ENDPOINT_PATH);
         System.out.println("SecurityPolicy: None / MessageSecurityMode: None / Auth: Anonymous");
         System.out.println("Namespace Index used for dummy nodes: ns=" + nsIndex.intValue());
+        System.out.println("Equipment NodeId: ns=" + nsIndex.intValue() + ";s=LS_EXP2/selectedEquipment (Int16, Write 1~3)");
         System.out.println("Page NodeId: ns=" + nsIndex.intValue() + ";s=LS_EXP2/workReportCurrentPage (Int16, Write 1~3)");
         System.out.println("TotalPage NodeId: ns=" + nsIndex.intValue() + ";s=LS_EXP2/workReportTotalPage (Int16, ReadOnly)");
         System.out.println("Row NodeId: ns=" + nsIndex.intValue() + ";s=LS_EXP2/workReportSelectedRow (Int16, Write 1~5)");
@@ -175,10 +212,14 @@ public class Main {
         nodeManager.addNode(tempNode);
         linkChild(nodeManager, server, rootFolder, tempNode);
 
-        UaVariableNode currentPageNode = createInt16Node(nodeContext, nsIndex,
+        UaVariableNode selectedEquipmentNode = createInt16RwNode(nodeContext, nsIndex,
+                "LS_EXP2/selectedEquipment", "selectedEquipment");
+        selectedEquipmentNode.setValue(new DataValue(new Variant((short) 1)));
+        nodeManager.addNode(selectedEquipmentNode);
+        linkChild(nodeManager, server, rootFolder, selectedEquipmentNode);
+
+        UaVariableNode currentPageNode = createInt16RwNode(nodeContext, nsIndex,
                 "LS_EXP2/workReportCurrentPage", "workReportCurrentPage");
-        currentPageNode.setAccessLevel(AccessLevel.toValue(AccessLevel.READ_WRITE));
-        currentPageNode.setUserAccessLevel(AccessLevel.toValue(AccessLevel.READ_WRITE));
         currentPageNode.setValue(new DataValue(new Variant((short) 1)));
         nodeManager.addNode(currentPageNode);
         linkChild(nodeManager, server, rootFolder, currentPageNode);
@@ -191,10 +232,8 @@ public class Main {
         nodeManager.addNode(totalPageNode);
         linkChild(nodeManager, server, rootFolder, totalPageNode);
 
-        UaVariableNode selectedRowNode = createInt16Node(nodeContext, nsIndex,
+        UaVariableNode selectedRowNode = createInt16RwNode(nodeContext, nsIndex,
                 "LS_EXP2/workReportSelectedRow", "workReportSelectedRow");
-        selectedRowNode.setAccessLevel(AccessLevel.toValue(AccessLevel.READ_WRITE));
-        selectedRowNode.setUserAccessLevel(AccessLevel.toValue(AccessLevel.READ_WRITE));
         selectedRowNode.setValue(new DataValue(new Variant((short) 1)));
         nodeManager.addNode(selectedRowNode);
         linkChild(nodeManager, server, rootFolder, selectedRowNode);
@@ -275,14 +314,18 @@ public class Main {
         linkChild(nodeManager, server, rootFolder, workDeadlineDetailNode);
         linkChild(nodeManager, server, rootFolder, targetQuantityDetailNode);
 
+        short initialEquipment = 1;
         short initialPage = 1;
         short initialRow = 1;
-        applyWorkReportPage(initialPage, productCodeNodes, productNameNodes, customerNodes, processNodes, workDeadlineNodes, targetQuantityNodes);
-        applyDetailByPageAndRow(initialPage, initialRow,
+        WorkItem[] initialWorkItems = getWorkItemsByEquipment(initialEquipment);
+        applyWorkReportPage(initialWorkItems, initialPage,
+                productCodeNodes, productNameNodes, customerNodes, processNodes, workDeadlineNodes, targetQuantityNodes);
+        applyDetailByPageAndRow(initialWorkItems, initialPage, initialRow,
                 productCodeDetailNode, productNameDetailNode, customerDetailNode,
                 processDetailNode, workDeadlineDetailNode, targetQuantityDetailNode);
 
         var scheduler = Executors.newSingleThreadScheduledExecutor();
+        final short[] lastEquipmentValue = {initialEquipment};
         final short[] lastPageValue = {initialPage};
         final short[] lastRowValue = {initialRow};
         final boolean[] lastWorkStart = {false};
@@ -298,14 +341,21 @@ public class Main {
             short tempRaw = (short) (200 + (int) (Math.random() * 120));
             tempNode.setValue(new DataValue(new Variant(tempRaw)));
 
+            short equipmentValue = normalizeEquipment(readShortValue(selectedEquipmentNode.getValue().getValue().getValue()));
             short pageValue = normalizePage(readShortValue(currentPageNode.getValue().getValue().getValue()));
             short rowValue = normalizeRow(readShortValue(selectedRowNode.getValue().getValue().getValue()));
+
+            boolean equipmentChanged = equipmentValue != lastEquipmentValue[0];
+            if (equipmentChanged) {
+                lastEquipmentValue[0] = equipmentValue;
+                selectedEquipmentNode.setValue(new DataValue(new Variant(equipmentValue)));
+                System.out.println("[CLIENT->SERVER] selectedEquipment=" + equipmentValue + " applied");
+            }
 
             boolean pageChanged = pageValue != lastPageValue[0];
             if (pageChanged) {
                 lastPageValue[0] = pageValue;
                 currentPageNode.setValue(new DataValue(new Variant(pageValue)));
-                applyWorkReportPage(pageValue, productCodeNodes, productNameNodes, customerNodes, processNodes, workDeadlineNodes, targetQuantityNodes);
                 System.out.println("[CLIENT->SERVER] currentPage=" + pageValue + " applied (5 rows)");
             }
 
@@ -316,8 +366,15 @@ public class Main {
                 System.out.println("[CLIENT->SERVER] selectedRow=" + rowValue + " applied");
             }
 
-            if (pageChanged || rowChanged) {
-                applyDetailByPageAndRow(pageValue, rowValue,
+            WorkItem[] currentWorkItems = getWorkItemsByEquipment(lastEquipmentValue[0]);
+            if (equipmentChanged || pageChanged) {
+                applyWorkReportPage(currentWorkItems, lastPageValue[0],
+                        productCodeNodes, productNameNodes, customerNodes,
+                        processNodes, workDeadlineNodes, targetQuantityNodes);
+            }
+
+            if (equipmentChanged || pageChanged || rowChanged) {
+                applyDetailByPageAndRow(currentWorkItems, lastPageValue[0], lastRowValue[0],
                         productCodeDetailNode, productNameDetailNode, customerDetailNode,
                         processDetailNode, workDeadlineDetailNode, targetQuantityDetailNode);
             }
@@ -414,7 +471,8 @@ public class Main {
         ), server.getNamespaceTable());
     }
 
-    private static void applyWorkReportPage(short currentPage,
+    private static void applyWorkReportPage(WorkItem[] workItems,
+                                            short currentPage,
                                             UaVariableNode[] productCodeNodes,
                                             UaVariableNode[] productNameNodes,
                                             UaVariableNode[] customerNodes,
@@ -423,7 +481,7 @@ public class Main {
                                             UaVariableNode[] targetQuantityNodes) {
         int offset = (currentPage - 1) * 5;
         for (int i = 0; i < 5; i++) {
-            WorkItem item = DESC_WORK_ITEMS[offset + i];
+            WorkItem item = workItems[offset + i];
             productCodeNodes[i].setValue(new DataValue(new Variant(item.productCode())));
             productNameNodes[i].setValue(new DataValue(new Variant(item.productName())));
             customerNodes[i].setValue(new DataValue(new Variant(item.customer())));
@@ -433,7 +491,8 @@ public class Main {
         }
     }
 
-    private static void applyDetailByPageAndRow(short currentPage,
+    private static void applyDetailByPageAndRow(WorkItem[] workItems,
+                                                short currentPage,
                                                 short selectedRow,
                                                 UaVariableNode productCodeDetailNode,
                                                 UaVariableNode productNameDetailNode,
@@ -442,7 +501,7 @@ public class Main {
                                                 UaVariableNode workDeadlineDetailNode,
                                                 UaVariableNode targetQuantityDetailNode) {
         int itemIndex = (currentPage - 1) * 5 + (selectedRow - 1);
-        WorkItem selectedItem = DESC_WORK_ITEMS[itemIndex];
+        WorkItem selectedItem = workItems[itemIndex];
 
         productCodeDetailNode.setValue(new DataValue(new Variant(selectedItem.productCode())));
         productNameDetailNode.setValue(new DataValue(new Variant(selectedItem.productName())));
@@ -462,6 +521,20 @@ public class Main {
         if (value < 1) return 1;
         if (value > 5) return 5;
         return value;
+    }
+
+    private static short normalizeEquipment(short value) {
+        if (value < 1) return 1;
+        if (value > 3) return 3;
+        return value;
+    }
+
+    private static WorkItem[] getWorkItemsByEquipment(short equipmentNo) {
+        return switch (normalizeEquipment(equipmentNo)) {
+            case 2 -> EQUIPMENT_2_WORK_ITEMS;
+            case 3 -> EQUIPMENT_3_WORK_ITEMS;
+            default -> EQUIPMENT_1_WORK_ITEMS;
+        };
     }
 
     private static short readShortValue(Object value) {

@@ -30,6 +30,7 @@ LS eXP2-1000D HMI에서 작업일보 List + Detail, 작업 상태 태그 바인�
 
 ### 3-1) 페이지/선택 입력 태그 (HMI -> Server)
 
+- `ns=<index>;s=LS_EXP2/selectedEquipment` (Int16, Write 1~3)
 - `ns=<index>;s=LS_EXP2/workReportCurrentPage` (Int16, Write 1~3)
 - `ns=<index>;s=LS_EXP2/workReportTotalPage` (Int16, ReadOnly, 값=3)
 - `ns=<index>;s=LS_EXP2/workReportSelectedRow` (Int16, Write 1~5)
@@ -70,21 +71,26 @@ LS eXP2-1000D HMI에서 작업일보 List + Detail, 작업 상태 태그 바인�
 
 ## 5) 데이터 동작
 
-- 더미 데이터 총 15건(P015 → P001, 내림차순)
-- `currentPage=1` -> P015~P011
-- `currentPage=2` -> P010~P006
-- `currentPage=3` -> P005~P001
-- `selectedRow`(1~5)로 Detail 태그가 갱신됨
+- 설비 더미 데이터 3종: `selectedEquipment=1,2,3`
+- 설비당 작업일보 더미 15건(내림차순), 총 45건
+- 페이지 매핑(각 설비 공통):
+  - `currentPage=1` -> 15~11번째
+  - `currentPage=2` -> 10~6번째
+  - `currentPage=3` -> 5~1번째
+- `selectedRow`(1~5)로 Detail 태그가 해당 설비/페이지 기준으로 갱신됨
 - 범위 보정:
+  - selectedEquipment: 1~3
   - currentPage: 1~3
   - selectedRow: 1~5
+- `selectedEquipment`/`currentPage`/`selectedRow` 값이 바뀌면 서버 콘솔에 `[CLIENT->SERVER] ... applied` 로그가 출력됨
 
 ## 6) HMI 바인딩 예시
 
-1. `workReportCurrentPage` 입력기(1~3) 바인딩
-2. `workReportSelectedRow` 입력기(1~5) 또는 선택 인덱스 바인딩
-3. row1~row5 리스트 컬럼 6개(목표생산량 포함) 바인딩
-4. Detail 태그 6개 바인딩
-5. 작업 상태/카운터 입력 태그 5개 바인딩
+1. `selectedEquipment` 입력기(1~3) 바인딩 (작업지시서 진입 설비 선택값)
+2. `workReportCurrentPage` 입력기(1~3) 바인딩
+3. `workReportSelectedRow` 입력기(1~5) 또는 선택 인덱스 바인딩
+4. row1~row5 리스트 컬럼 6개(목표생산량 포함) 바인딩
+5. Detail 태그 6개 바인딩
+6. 작업 상태/카운터 입력 태그 5개 바인딩
 
 > 네임스페이스 인덱스는 실행 시 달라질 수 있으니 콘솔 출력 기준으로 사용하세요.
